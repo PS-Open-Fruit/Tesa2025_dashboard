@@ -23,13 +23,13 @@ export default function RootLayout({
               <Icon icon="mdi:home" width="20" height="20" className="text-blue-400" />
               <span>Home</span>
             </Link>
-            <Link href="/offensive" className="hover:bg-gray-800 p-2 rounded flex items-center space-x-2">
+            <Link href="/dashboard" className="hover:bg-gray-800 p-2 rounded flex items-center space-x-2">
             <Icon icon="mdi:sword" width="20" height="20" className="text-blue-400" />
-            <span>Offensive</span>
+            <span>Dashboard</span>
             </Link>
-            <Link href="/defensive" className="hover:bg-gray-800 p-2 rounded flex items-center space-x-2">
+            <Link href="/detection" className="hover:bg-gray-800 p-2 rounded flex items-center space-x-2">
             <Icon icon="mdi:shield" width="20" height="20" className="text-blue-400" />
-            <span>Defensive</span>
+            <span>Detection</span>
             </Link>
             <Link href="/integation" className="hover:bg-gray-800 p-2 rounded flex items-center space-x-2">
             <Icon icon="mdi:contract" width="20" height="20" className="text-blue-400" />

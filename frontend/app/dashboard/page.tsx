@@ -2,20 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { fetchCameraInfo } from "../api"; // เพิ่มบรรทัดนี้
+import type { CameraInfoResponse } from "../type";
 
-type CameraInfoResponse = {
-  success: boolean;
-  data?: {
-    id: string;
-    name: string;
-    location: string;
-    token: string;
-    created_at: string;
-  };
-  message?: string;
-};
-
-export default function OffensivePage() {
+export default function DashboardPage() {
   const [cameraId, setCameraId] = useState("");
   const [token, setToken] = useState("");
   const [isConnecting, setIsConnecting] = useState(false);
@@ -29,17 +19,7 @@ export default function OffensivePage() {
     setConnectMessage(null);
     setResultPreview(null);
     try {
-      const url = `https://tesa-api.crma.dev/api/object-detection/info/${
-        cameraId}`;
-      const res = await fetch(url, {
-        method: "GET",
-        headers: {
-          "accept": "application/json",
-          "x-camera-token": token,
-        },
-      });
-      const data: CameraInfoResponse = await res.json();
-      if (!res.ok) throw new Error(data?.message || "Connect failed");
+      const data = await fetchCameraInfo(cameraId, token);
       setConnectMessage("เชื่อมต่อสำเร็จ");
       setCameraInfo(data?.data ?? null);
       try {
@@ -47,9 +27,13 @@ export default function OffensivePage() {
       } catch {
         setResultPreview(String(data));
       }
+      // persist to session for connected page
+      try {
+        sessionStorage.setItem("Dashboard_cameraInfo", JSON.stringify(data?.data ?? null));
+        sessionStorage.setItem("Dashboard_resultPreview", JSON.stringify(data ?? null));
+      } catch {}
 
-      // Navigate to success page
-      router.push("/offensive/connected");
+      router.push("/dashboard/connected");
     } catch (err: any) {
       setConnectMessage(err?.message || "เกิดข้อผิดพลาดในการเชื่อมต่อ");
     } finally {
@@ -135,4 +119,3 @@ export default function OffensivePage() {
     </div>
   );
 }
-
