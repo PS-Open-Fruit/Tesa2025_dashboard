@@ -3,14 +3,11 @@
 import { useEffect, useState } from "react";
 import type { CameraInfoResponse } from "../../type";
 import type { DetectionListResponse } from "../../type";
-import { io, Socket } from "socket.io-client";
 import { fetchDetectionshistory } from "@/app/api";
 
 export default function ConnectedPage() {
   const [cameraInfo, setCameraInfo] = useState<CameraInfoResponse["data"] | null>(null);
   const [resultPreview, setResultPreview] = useState<string | null>(null);
-  const [socketStatus, setSocketStatus] = useState<"disconnected" | "connecting" | "connected" | "error">("disconnected");
-  const [socketError, setSocketError] = useState<string | null>(null);
   const [detections, setDetections] = useState<DetectionListResponse["data"]>([]);
   const [isLoadingDetections, setIsLoadingDetections] = useState(false);
   const [detectionsError, setDetectionsError] = useState<string | null>(null);
@@ -37,42 +34,7 @@ export default function ConnectedPage() {
     }
   };
 
-  useEffect(() => {
-    // Establish Socket.IO connection on mount
-    setSocketStatus("connecting");
-    setSocketError(null);
-
-    const socket: Socket = io("https://tesa-api.crma.dev", {
-      transports: ["websocket"],
-      autoConnect: true,
-      reconnection: true,
-      reconnectionAttempts: Infinity,
-      reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000,
-    });
-
-    const onConnect = () => {
-      setSocketStatus("connected");
-    };
-    const onDisconnect = () => {
-      setSocketStatus("disconnected");
-    };
-    const onConnectError = (err: any) => {
-      setSocketStatus("error");
-      setSocketError(err?.message || "Connection error");
-    };
-
-    socket.on("connect", onConnect);
-    socket.on("disconnect", onDisconnect);
-    socket.on("connect_error", onConnectError);
-
-    return () => {
-      socket.off("connect", onConnect);
-      socket.off("disconnect", onDisconnect);
-      socket.off("connect_error", onConnectError);
-      socket.close();
-    };
-  }, []);
+  // Removed Socket.IO connection for now
 
   useEffect(() => {
     try {
@@ -101,67 +63,54 @@ export default function ConnectedPage() {
         <div className="w-full rounded-xl bg-white border border-gray-200 shadow p-5 space-y-4">
           <h2 className="text-lg font-semibold text-gray-900">Connected</h2>
 
-          {resultPreview && (
-            <div>
-              <div className="text-sm font-medium text-gray-800 mb-2">API Result</div>
-              <pre className="mt-2 max-h-64 overflow-auto rounded-md bg-gray-50 border border-gray-200 p-3 text-xs text-gray-800">
-                {resultPreview}
-              </pre>
-            </div>
-          )}
-
-{cameraInfo ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Left: API Result Preview */}
             <div className="rounded-lg border border-gray-200 p-4 bg-gray-50">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-                <div>
-                  <span className="text-gray-500">Team ID</span>
-                  <div className="font-medium text-gray-900 break-all">{cameraInfo.id}</div>
-                </div>
-                <div>
-                  <span className="text-gray-500">Team Name</span>
-                  <div className="font-medium text-gray-900">{cameraInfo.name}</div>
-                </div>
-                <div>
-                  <span className="text-gray-500">Location</span>
-                  <div className="font-medium text-gray-900">{cameraInfo.location}</div>
-                </div>
-                <div>
-                  <span className="text-gray-500">Token</span>
-                  <div className="font-mono text-gray-900 break-all">{cameraInfo.token}</div>
-                </div>
-                <div className="sm:col-span-2">
-                  <span className="text-gray-500">Created At</span>
-                  <div className="font-medium text-gray-900">
-                    {new Date(cameraInfo.created_at).toLocaleString()}
+              <div className="text-sm font-medium text-gray-800 mb-2">API Result</div>
+              {resultPreview ? (
+                <pre className="max-h-64 overflow-auto rounded-md bg-white border border-gray-200 p-3 text-xs text-gray-800">
+                  {resultPreview}
+                </pre>
+              ) : (
+                <div className="text-sm text-gray-600">No API result to display.</div>
+              )}
+            </div>
+
+            {/* Right: Camera Info */}
+            <div className="rounded-lg border border-gray-200 p-4 bg-gray-50">
+              <div className="text-sm font-medium text-gray-800 mb-2">Camera Info</div>
+              {cameraInfo ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <span className="text-gray-500">Team ID</span>
+                    <div className="font-medium text-gray-900 break-all">{cameraInfo.id}</div>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Team Name</span>
+                    <div className="font-medium text-gray-900">{cameraInfo.name}</div>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Location</span>
+                    <div className="font-medium text-gray-900">{cameraInfo.location}</div>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Token</span>
+                    <div className="font-mono text-gray-900 break-all">{cameraInfo.token}</div>
+                  </div>
+                  <div className="sm:col-span-2">
+                    <span className="text-gray-500">Created At</span>
+                    <div className="font-medium text-gray-900">
+                      {new Date(cameraInfo.created_at).toLocaleString()}
+                    </div>
                   </div>
                 </div>
-              </div>
+              ) : (
+                <div className="text-sm text-gray-600">No camera info found in session.</div>
+              )}
             </div>
-          ) : (
-            <div className="text-sm text-gray-600">No camera info found in session.</div>
-          )}
+          </div>
 
-          {/* Socket status */}
-          <div className="flex items-center gap-3 rounded-md border border-gray-200 p-3 bg-gray-50">
-            <span
-              className={
-                "inline-block h-3 w-3 rounded-full " +
-                (socketStatus === "connected"
-                  ? "bg-green-500"
-                  : socketStatus === "connecting"
-                    ? "bg-yellow-500"
-                    : socketStatus === "error"
-                      ? "bg-red-500"
-                      : "bg-gray-400")
-              }
-            />
-            <span className="text-sm text-gray-800">
-              {socketStatus === "connected" && "Socket connected to https://tesa-api.crma.dev"}
-              {socketStatus === "connecting" && "Connecting to Socket.IO server..."}
-              {socketStatus === "disconnected" && "Socket disconnected"}
-              {socketStatus === "error" && `Socket error: ${socketError ?? "Unknown error"}`}
-            </span>
-            </div>
+          {/* Socket status removed */}
 
           <div className="h-px bg-gray-200 my-4" />
 
