@@ -1,6 +1,19 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+
+type CameraInfoResponse = {
+  success: boolean;
+  data?: {
+    id: string;
+    name: string;
+    location: string;
+    token: string;
+    created_at: string;
+  };
+  message?: string;
+};
 
 export default function OffensivePage() {
   const [cameraId, setCameraId] = useState("");
@@ -8,34 +21,35 @@ export default function OffensivePage() {
   const [isConnecting, setIsConnecting] = useState(false);
   const [connectMessage, setConnectMessage] = useState<string | null>(null);
   const [resultPreview, setResultPreview] = useState<string | null>(null);
+  const [cameraInfo, setCameraInfo] = useState<CameraInfoResponse["data"] | null>(null);
+  const router = useRouter();
 
   const handleConnect = async () => {
     setIsConnecting(true);
     setConnectMessage(null);
     setResultPreview(null);
     try {
-      const base = process.env.NEXT_PUBLIC_OFFENSIVE_BASE;
-      if (!base) {
-        throw new Error("กรุณาตั้งค่า NEXT_PUBLIC_OFFENSIVE_BASE ใน env");
-      }
-      const url = `${base.replace(/\/$/, "")}/camera/info?cameraId=${encodeURIComponent(
-        cameraId)}`;
-
+      const url = `https://tesa-api.crma.dev/api/object-detection/info/${
+        cameraId}`;
       const res = await fetch(url, {
         method: "GET",
         headers: {
-          Accept: "application/json",
-          "x-camera-id": encodeURIComponent(token),
+          "accept": "application/json",
+          "x-camera-token": token,
         },
       });
-      const data = await res.json();
+      const data: CameraInfoResponse = await res.json();
       if (!res.ok) throw new Error(data?.message || "Connect failed");
       setConnectMessage("เชื่อมต่อสำเร็จ");
+      setCameraInfo(data?.data ?? null);
       try {
         setResultPreview(JSON.stringify(data, null, 2));
       } catch {
         setResultPreview(String(data));
       }
+
+      // Navigate to success page
+      router.push("/offensive/connected");
     } catch (err: any) {
       setConnectMessage(err?.message || "เกิดข้อผิดพลาดในการเชื่อมต่อ");
     } finally {
@@ -82,6 +96,33 @@ export default function OffensivePage() {
                 <span className="text-sm text-gray-700">{connectMessage}</span>
               )}
             </div>
+
+            {cameraInfo && (
+              <div className="rounded-lg border border-gray-200 p-4 bg-gray-50">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <span className="text-gray-500">Team ID</span>
+                    <div className="font-medium text-gray-900 break-all">{cameraInfo.id}</div>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Team Name</span>
+                    <div className="font-medium text-gray-900">{cameraInfo.name}</div>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Location</span>
+                    <div className="font-medium text-gray-900">{cameraInfo.location}</div>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Token</span>
+                    <div className="font-mono text-gray-900 break-all">{cameraInfo.token}</div>
+                  </div>
+                  <div className="sm:col-span-2">
+                    <span className="text-gray-500">Created At</span>
+                    <div className="font-medium text-gray-900">{new Date(cameraInfo.created_at).toLocaleString()}</div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {resultPreview && (
               <pre className="mt-2 max-h-64 overflow-auto rounded-md bg-gray-50 border border-gray-200 p-3 text-xs text-gray-800">
