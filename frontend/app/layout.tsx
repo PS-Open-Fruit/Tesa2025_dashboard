@@ -25,11 +25,11 @@ export default function RootLayout({
             </Link>
             <Link href="/about" className="hover:bg-gray-800 p-2 rounded flex items-center space-x-2">
             <Icon icon="mdi:about" width="20" height="20" className="text-blue-400" />
-            <span>About</span>
+            <span>Offensive</span>
             </Link>
             <Link href="/contact" className="hover:bg-gray-800 p-2 rounded flex items-center space-x-2">
             <Icon icon="mdi:contract" width="20" height="20" className="text-blue-400" />
-            <span>Contact</span>
+            <span>Defensive</span>
             </Link>
             <Link href="/integation" className="hover:bg-gray-800 p-2 rounded flex items-center space-x-2">
             <Icon icon="mdi:contract" width="20" height="20" className="text-blue-400" />
