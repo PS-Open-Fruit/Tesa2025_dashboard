@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import "mapbox-gl/dist/mapbox-gl.css";
+import Map, { Marker } from "react-map-gl/mapbox-legacy";
+import { useEffect, useState, useCallback } from "react";
 import type { CameraInfoResponse } from "../../type";
 import type { DetectionListResponse } from "../../type";
 import { fetchDetectionshistory } from "@/app/api";
@@ -11,8 +13,28 @@ export default function ConnectedPage() {
   const [detections, setDetections] = useState<DetectionListResponse["data"]>([]);
   const [isLoadingDetections, setIsLoadingDetections] = useState(false);
   const [detectionsError, setDetectionsError] = useState<string | null>(null);
+  const [hasCustomCameraLocation, setHasCustomCameraLocation] = useState(false);
 
-  const fetchDetections = async () => {
+  const DEFAULT_MAP_COORDINATES = { latitude: 13.736717, longitude: 100.523186, zoom: 12 };
+  const [mapViewState, setMapViewState] = useState(DEFAULT_MAP_COORDINATES);
+
+  const extractCoordinates = (rawLocation?: string | null) => {
+    if (!rawLocation) {
+      return null;
+    }
+    const numberMatches = rawLocation.match(/-?\d+(\.\d+)?/g);
+    if (!numberMatches || numberMatches.length < 2) {
+      return null;
+    }
+    const latitude = parseFloat(numberMatches[0]);
+    const longitude = parseFloat(numberMatches[1]);
+    if (Number.isNaN(latitude) || Number.isNaN(longitude)) {
+      return null;
+    }
+    return { latitude, longitude };
+  };
+
+  const fetchDetections = useCallback(async () => {
     setIsLoadingDetections(true);
     setDetectionsError(null);
     try {
@@ -32,7 +54,7 @@ export default function ConnectedPage() {
     } finally {
       setIsLoadingDetections(false);
     }
-  };
+  }, [cameraInfo]);
 
   // Removed Socket.IO connection for now
 
@@ -56,6 +78,71 @@ export default function ConnectedPage() {
       // ignore
     }
   }, []);
+
+  // Auto-load detections once camera info is available
+  useEffect(() => {
+    if (cameraInfo?.token) {
+      fetchDetections();
+    }
+  }, [cameraInfo?.token, fetchDetections]);
+
+  // Log full detections data whenever it changes
+  useEffect(() => {
+    if (detections) {
+      // Raw object (expandable in DevTools)
+      console.log("detections:", detections);
+      // Pretty JSON string (ensures full snapshot is visible)
+      try {
+        console.log("detections JSON:", JSON.stringify(detections, null, 2));
+      } catch {
+        // ignore stringify errors
+      }
+    }
+  }, [detections]);
+
+  // Update map view based on camera location
+  useEffect(() => {
+    const coords = extractCoordinates(cameraInfo?.location);
+    if (coords) {
+      setHasCustomCameraLocation(true);
+      setMapViewState((prev) => ({
+        ...prev,
+        ...coords,
+      }));
+    } else {
+      setHasCustomCameraLocation(false);
+      setMapViewState((prev) => ({
+        ...prev,
+        latitude: DEFAULT_MAP_COORDINATES.latitude,
+        longitude: DEFAULT_MAP_COORDINATES.longitude,
+      }));
+    }
+  }, [cameraInfo?.location]);
+
+
+  const buildImageUrl = (camId: string, imagePath: string) => {
+    if (!camId || !imagePath) {
+      return null;
+    }
+    const sanitizedPath = imagePath.split("?")[0];
+    const segments = sanitizedPath.split("/").filter(Boolean);
+    const filename = segments[segments.length - 1];
+    if (!filename) {
+      return null;
+    }
+    return `https://tesa-api.crma.dev/api/files/${camId}/${filename}`;
+  };
+
+  // Try to read coordinates from each detection item
+  const getDetectionCoords = (d: NonNullable<DetectionListResponse["data"]>[number]) => {
+    const anyD: any = d as any;
+    const latitude = anyD?.lat ?? anyD?.latitude ?? anyD?.geo_lat ?? null;
+    const longitude = anyD?.lng ?? anyD?.lon ?? anyD?.longitude ?? anyD?.geo_lng ?? null;
+    if (typeof latitude === "number" && typeof longitude === "number") {
+      return { latitude, longitude };
+    }
+    return null;
+  };
 
   return (
     <div className="w-full min-h-[calc(100vh-2rem)] rounded-lg overflow-hidden shadow bg-white p-6">
@@ -116,13 +203,9 @@ export default function ConnectedPage() {
 
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-base font-semibold text-gray-900">รายการตรวจจับล่าสุด</h3>
-            <button
-              className="inline-flex items-center justify-center rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-black disabled:opacity-50 disabled:cursor-not-allowed"
-              onClick={fetchDetections}
-              disabled={isLoadingDetections || !cameraInfo?.token}
-            >
-              {isLoadingDetections ? "กำลังโหลด..." : "ดึงข้อมูล"}
-            </button>
+            <div className="text-sm text-gray-600">
+              {isLoadingDetections ? "กำลังโหลด..." : null}
+            </div>
           </div>
 
           {detectionsError && <div className="text-sm text-red-600 mb-2">{detectionsError}</div>}
@@ -145,30 +228,70 @@ export default function ConnectedPage() {
                     </td>
                   </tr>
                 ) : (
-                  detections.map((d) => (
-                    <tr key={`${d.id}-${d.timestamp}`} className="border-t border-gray-200">
-                      <td className="px-3 py-2">{d.id}</td>
-                      <td className="px-3 py-2 break-all">{d.cam_id}</td>
-                      <td className="px-3 py-2">{new Date(d.timestamp).toLocaleString()}</td>
-                      <td className="px-3 py-2">
-                        {d.image_path ? (
-                          <a
-                            href={d.image_path}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-blue-600 hover:underline"
-                          >
-                            เปิดภาพ
-                          </a>
-                        ) : (
-                          "-"
-                        )}
-                      </td>
-                    </tr>
-                  ))
+                  detections.map((d) => {
+                    const imageUrl = buildImageUrl(d.cam_id, d.image_path);
+                    return (
+                      <tr key={`${d.id}-${d.timestamp}`} className="border-t border-gray-200">
+                        <td className="px-3 py-2">{d.id}</td>
+                        <td className="px-3 py-2 break-all">{d.cam_id}</td>
+                        <td className="px-3 py-2">{new Date(d.timestamp).toLocaleString()}</td>
+                        <td className="px-3 py-2">
+                          {imageUrl ? (
+                            <a
+                              href={imageUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-blue-600 hover:underline"
+                            >
+                              เปิดภาพ
+                            </a>
+                          ) : (
+                            "-"
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
+          </div>
+
+          <div className="h-px bg-gray-200 my-4" />
+          <div>
+            <h4 className="text-base font-semibold text-gray-900 mb-2">ตำแหน่งบนแผนที่</h4>
+            <div className="text-sm text-gray-600 mb-3">
+              {hasCustomCameraLocation
+                ? `พิกัดจากข้อมูลกล้อง: ${cameraInfo?.location}`
+                : "ไม่พบพิกัดจากข้อมูลกล้อง แสดงตำแหน่งเริ่มต้น (กรุงเทพมหานคร)"}
+            </div>
+            <div className="w-full h-80 rounded-lg overflow-hidden border border-gray-200">
+              <Map
+                mapboxAccessToken={process.env.NEXT_PUBLIC_MAPBOX_TOKEN}
+                mapStyle="mapbox://styles/mapbox/streets-v12"
+                style={{ width: "100%", height: "100%" }}
+                initialViewState={mapViewState}
+              >
+                {/* Camera marker (center) */}
+                <Marker longitude={mapViewState.longitude} latitude={mapViewState.latitude}>
+                  <div className="w-3 h-3 rounded-full bg-blue-600 border border-white shadow" />
+                </Marker>
+                {/* Detection markers in red, when coordinates exist on each item */}
+                {detections?.map((d) => {
+                  const coords = getDetectionCoords(d);
+                  if (!coords) return null;
+                  return (
+                    <Marker
+                      key={`${d.id}-${d.timestamp}-marker`}
+                      longitude={coords.longitude}
+                      latitude={coords.latitude}
+                    >
+                      <div className="w-3 h-3 rounded-full bg-red-600 border border-white shadow" />
+                    </Marker>
+                  );
+                })}
+              </Map>
+            </div>
           </div>
             
         </div>
