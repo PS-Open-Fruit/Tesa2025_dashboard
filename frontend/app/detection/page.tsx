@@ -9,12 +9,10 @@ export default function DetectionPage() {
   const [cameraToken, setCameraToken] = useState("");
   const [latitude, setLatitude] = useState(14.297569);
   const [longitude, setLongitude] = useState(101.166279);
-
   const [uploadInterval, setUploadInterval] = useState(6);
   const [minMovement, setMinMovement] = useState(8);
   const [maxMovement, setMaxMovement] = useState(10);
   const [numFrames, setNumFrames] = useState(3);
-
   const [isRunning, setIsRunning] = useState(false);
 
   return (

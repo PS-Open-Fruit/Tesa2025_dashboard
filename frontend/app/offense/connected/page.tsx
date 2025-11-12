@@ -19,7 +19,7 @@ interface CameraInfo {
 }
 
 
-export default function ConnectedPage() {
+export default function OffenseConnectedPage() {
   const router = useRouter();
   const [cameraInfo, setCameraInfo] = useState<CameraInfo | null>(null);
   const [detections, setDetections] = useState<DetectionItem[]>([]);
@@ -41,7 +41,7 @@ export default function ConnectedPage() {
     const preview = sessionStorage.getItem("Dashboard_resultPreview");
 
     if (!info) {
-      router.push("/dashboard");
+      router.push("/offense");
       return;
     }
 
@@ -59,7 +59,7 @@ export default function ConnectedPage() {
       });
     } catch (err) {
       console.error("Failed to parse camera info", err);
-      router.push("/dashboard");
+      router.push("/offense");
     }
   }, [router]);
 
@@ -148,7 +148,7 @@ export default function ConnectedPage() {
       <div className="w-full space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-gray-900">Connected</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Offense Connected</h1>
           <div className="flex items-center gap-2">
             {/* Socket.IO Status Indicator */}
             <div className="flex items-center gap-2">
@@ -190,7 +190,7 @@ export default function ConnectedPage() {
                 }
                 sessionStorage.removeItem("Dashboard_cameraInfo");
                 sessionStorage.removeItem("Dashboard_resultPreview");
-                router.push("/dashboard");
+                router.push("/offense");
               }}
             >
               Disconnect
@@ -334,7 +334,7 @@ export default function ConnectedPage() {
                       onClick={() => setCurrentPage(page)}
                       className={`px-3 py-1.5 text-sm font-medium rounded-md ${
                         currentPage === page
-                          ? "bg-blue-600 text-white"
+                          ? "bg-red-600 text-white"
                           : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
                       }`}
                     >
@@ -357,3 +357,4 @@ export default function ConnectedPage() {
     </div>
   );
 }
+
