@@ -1,20 +1,22 @@
 "use client";
 import { useEffect, useRef } from "react";
 import mapboxgl from "mapbox-gl";
-import type { DetectionItem } from "@/app/type";
+import type { DetectionItem, DetectionObject } from "@/app/type";
 
 interface MapProps {
   latitude: number;
   longitude: number;
   detections: DetectionItem[];
+  onMarkerClick?: (object: DetectionObject) => void;
 }
 
-export default function Map({ latitude, longitude, detections }: MapProps) {
+export default function Map({ latitude, longitude, detections, onMarkerClick }: MapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<mapboxgl.Marker[]>([]);
   const cameraMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const isMapInitialized = useRef(false);
+  const onMarkerClickRef = useRef(onMarkerClick);
 
   // Initialize map only once
   useEffect(() => {
@@ -31,11 +33,14 @@ export default function Map({ latitude, longitude, detections }: MapProps) {
     mapRef.current = map;
     isMapInitialized.current = true;
 
-    // Marker for the camera (only create once, no popup)
-    const cameraMarker = new mapboxgl.Marker({ color: "red" })
-      .setLngLat([longitude, latitude])
-      .addTo(map);
-    cameraMarkerRef.current = cameraMarker;
+    // Wait for map to load before creating markers
+    map.on("load", () => {
+      // Marker for the camera (only create once, no popup)
+      const cameraMarker = new mapboxgl.Marker({ color: "red" })
+        .setLngLat([longitude, latitude])
+        .addTo(map);
+      cameraMarkerRef.current = cameraMarker;
+    });
 
     return () => {
       // Cleanup all markers
@@ -49,6 +54,11 @@ export default function Map({ latitude, longitude, detections }: MapProps) {
     };
   }, []); // Only run once on mount
 
+  // Keep onMarkerClick ref up to date
+  useEffect(() => {
+    onMarkerClickRef.current = onMarkerClick;
+  }, [onMarkerClick]);
+
   // Update camera marker position when latitude/longitude change (without resetting viewport)
   useEffect(() => {
     if (cameraMarkerRef.current && mapRef.current) {
@@ -60,52 +70,68 @@ export default function Map({ latitude, longitude, detections }: MapProps) {
   useEffect(() => {
     if (!mapRef.current) return;
 
-    // Remove all old detection markers
-    markersRef.current.forEach((marker) => marker.remove());
-    markersRef.current = [];
+    // Wait for map to be fully loaded before creating markers
+    const createMarkers = () => {
+      if (!mapRef.current || !mapRef.current.loaded()) return;
 
-    // Find detection with latest timestamp
-    if (detections.length === 0) return;
-    
-    const latestDetection = detections.reduce((latest, current) => {
-      if (!latest) return current;
-      if (!current) return latest;
+      // Remove all old detection markers
+      markersRef.current.forEach((marker) => marker.remove());
+      markersRef.current = [];
+
+      // Find detection with latest timestamp
+      if (detections.length === 0) return;
       
-      const latestTime = new Date(latest.timestamp).getTime();
-      const currentTime = new Date(current.timestamp).getTime();
+      const latestDetection = detections.reduce((latest, current) => {
+        if (!latest) return current;
+        if (!current) return latest;
+        
+        const latestTime = new Date(latest.timestamp).getTime();
+        const currentTime = new Date(current.timestamp).getTime();
+        
+        return currentTime > latestTime ? current : latest;
+      });
       
-      return currentTime > latestTime ? current : latest;
-    });
-    
-    if (!latestDetection || !latestDetection.objects) return;
+      if (!latestDetection || !latestDetection.objects) return;
 
-    // Create new markers from the latest detection's objects
-    latestDetection.objects.forEach((obj) => {
-      const lat = typeof obj.lat === "string" ? parseFloat(obj.lat) : obj.lat;
-      const lng = typeof obj.lng === "string" ? parseFloat(obj.lng) : obj.lng;
+      // Create new markers from the latest detection's objects
+      latestDetection.objects.forEach((obj) => {
+        const lat = typeof obj.lat === "string" ? parseFloat(obj.lat) : obj.lat;
+        const lng = typeof obj.lng === "string" ? parseFloat(obj.lng) : obj.lng;
 
-      if (!isNaN(lat) && !isNaN(lng)) {
-        // Create marker with click interaction
-        const marker = new mapboxgl.Marker({ color: "blue" })
-          .setLngLat([lng, lat])
-          .addTo(mapRef.current!);
-        
-        // Add click event to center map on marker
-        const markerElement = marker.getElement();
-        markerElement.style.cursor = "pointer";
-        markerElement.addEventListener("click", () => {
-          if (mapRef.current) {
-            mapRef.current.flyTo({
-              center: [lng, lat],
-              zoom: 16,
-              essential: true,
-            });
-          }
-        });
-        
-        markersRef.current.push(marker);
-      }
-    });
+        if (!isNaN(lat) && !isNaN(lng)) {
+          // Create marker with click interaction
+          const marker = new mapboxgl.Marker({ color: "blue" })
+            .setLngLat([lng, lat])
+            .addTo(mapRef.current!);
+          
+          // Add click event to center map on marker and trigger callback
+          const markerElement = marker.getElement();
+          markerElement.style.cursor = "pointer";
+          markerElement.addEventListener("click", () => {
+            if (mapRef.current) {
+              mapRef.current.flyTo({
+                center: [lng, lat],
+                zoom: 16,
+                essential: true,
+              });
+            }
+            // Trigger callback with marker object data
+            if (onMarkerClickRef.current) {
+              onMarkerClickRef.current(obj);
+            }
+          });
+          
+          markersRef.current.push(marker);
+        }
+      });
+    };
+
+    // Check if map is loaded, if not wait for load event
+    if (mapRef.current.loaded()) {
+      createMarkers();
+    } else {
+      mapRef.current.once("load", createMarkers);
+    }
   }, [detections]);
 
   return <div ref={mapContainer} className="w-full h-full" />;

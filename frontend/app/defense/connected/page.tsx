@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { io } from "socket.io-client";
 import { fetchDetectionshistory } from "@/app/api";
-import { DetectionItem } from "@/app/type";
+import { DetectionItem, DetectionObject } from "@/app/type";
 
 const Map = dynamic(() => import("@/components/map"), { ssr: false });
 
@@ -27,6 +27,7 @@ export default function DefenseConnectedPage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [socketStatus, setSocketStatus] = useState<"connecting" | "connected" | "disconnected">("disconnected");
   const [currentPage, setCurrentPage] = useState(1);
+  const [selectedMarker, setSelectedMarker] = useState<DetectionObject | null>(null);
   const socketRef = useRef<ReturnType<typeof io> | null>(null);
 
   const itemsPerPage = 10;
@@ -230,19 +231,78 @@ export default function DefenseConnectedPage() {
         </div>
 
         {/* ✅ Map Section */}
-        <div className="rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-          <div className="bg-gray-100 px-4 py-2 border-b border-gray-200">
-            <h2 className="text-sm font-semibold text-gray-700">
-              แผนที่ตำแหน่งกล้อง
-            </h2>
+        <div className="flex gap-4 w-full overflow-hidden">
+          {/* Map */}
+          <div className="rounded-xl border border-gray-200 shadow-sm overflow-hidden transition-all duration-300 ease-in-out flex-1">
+            <div className="bg-gray-100 px-4 py-2 border-b border-gray-200">
+              <h2 className="text-sm font-semibold text-gray-700">
+                แผนที่ตำแหน่งกล้อง
+              </h2>
+            </div>
+            <div className="w-full h-[600px]">
+              <Map
+                latitude={cameraInfo?.latitude || 13.7563}
+                longitude={cameraInfo?.longitude || 100.5018}
+                detections={detections}
+                onMarkerClick={(object) => setSelectedMarker(object)}
+              />
+            </div>
           </div>
-          <div className="w-full h-[600px]">
-            <Map
-              latitude={cameraInfo?.latitude || 13.7563}
-              longitude={cameraInfo?.longitude || 100.5018}
-              detections={detections}
-            />
-          </div>
+          
+          {/* Marker Details Card - แสดงเฉพาะเมื่อกดที่ marker */}
+          {selectedMarker && (
+            <div className="flex-[0_0_20%] min-w-[200px] max-w-[280px] rounded-xl border border-gray-200 shadow-sm bg-white overflow-hidden flex-shrink-0">
+              <div className="bg-gray-100 px-4 py-2 border-b border-gray-200 flex justify-between items-center">
+                <h3 className="text-sm font-semibold text-gray-700">รายละเอียด Marker</h3>
+                <button
+                  onClick={() => setSelectedMarker(null)}
+                  className="text-gray-700 hover:text-white hover:bg-red-500 bg-white border border-gray-300 text-lg font-bold leading-none w-8 h-8 flex items-center justify-center rounded-full transition-all shadow-sm hover:shadow-md"
+                  title="ปิด"
+                  aria-label="ปิด"
+                >
+                  ×
+                </button>
+              </div>
+              <div className="p-4 space-y-3 overflow-y-auto max-h-[600px]">
+                <div>
+                  <p className="text-xs text-gray-600 mb-1">Object ID</p>
+                  <p className="text-sm font-medium text-gray-900">{selectedMarker.obj_id || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-600 mb-1">Type</p>
+                  <p className="text-sm font-medium text-gray-900">{selectedMarker.type || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-600 mb-1">Latitude</p>
+                  <p className="text-sm font-medium text-gray-900">{selectedMarker.lat || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-600 mb-1">Longitude</p>
+                  <p className="text-sm font-medium text-gray-900">{selectedMarker.lng || '-'}</p>
+                </div>
+                {selectedMarker.objective && (
+                  <div>
+                    <p className="text-xs text-gray-600 mb-1">Objective</p>
+                    <p className="text-sm font-medium text-gray-900">{selectedMarker.objective}</p>
+                  </div>
+                )}
+                {selectedMarker.size && (
+                  <div>
+                    <p className="text-xs text-gray-600 mb-1">Size</p>
+                    <p className="text-sm font-medium text-gray-900">{selectedMarker.size}</p>
+                  </div>
+                )}
+                {selectedMarker.details && (
+                  <div>
+                    <p className="text-xs text-gray-600 mb-1">Details</p>
+                    <pre className="text-xs font-mono text-gray-700 bg-gray-50 p-2 rounded overflow-auto">
+                      {JSON.stringify(selectedMarker.details, null, 2)}
+                    </pre>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* ✅ Recent Detections Table */}
