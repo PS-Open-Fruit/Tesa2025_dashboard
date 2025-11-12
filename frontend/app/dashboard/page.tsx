@@ -2,43 +2,66 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { fetchCameraInfo } from "../api"; // เพิ่มบรรทัดนี้
-import type { CameraInfoResponse } from "../type";
+import { fetchCameraInfo } from "../api";
 
 export default function DashboardPage() {
   const [cameraId, setCameraId] = useState("");
   const [token, setToken] = useState("");
   const [isConnecting, setIsConnecting] = useState(false);
   const [connectMessage, setConnectMessage] = useState<string | null>(null);
-  const [resultPreview, setResultPreview] = useState<string | null>(null);
-  const [cameraInfo, setCameraInfo] = useState<CameraInfoResponse["data"] | null>(null);
   const router = useRouter();
 
-  const handleConnect = async () => {
+  // ✅ ฟังก์ชันหลัก ใช้เชื่อมต่อกับกล้อง
+  const connectToCamera = async (camId: string, camToken: string) => {
     setIsConnecting(true);
     setConnectMessage(null);
-    setResultPreview(null);
-    try {
-      const data = await fetchCameraInfo(cameraId, token);
-      setConnectMessage("เชื่อมต่อสำเร็จ");
-      setCameraInfo(data?.data ?? null);
-      try {
-        setResultPreview(JSON.stringify(data, null, 2));
-      } catch {
-        setResultPreview(String(data));
-      }
-      // persist to session for connected page
-      try {
-        sessionStorage.setItem("Dashboard_cameraInfo", JSON.stringify(data?.data ?? null));
-        sessionStorage.setItem("Dashboard_resultPreview", JSON.stringify(data ?? null));
-      } catch {}
 
+    try {
+      const data = await fetchCameraInfo(camId, camToken);
+
+      if (!data?.data) throw new Error("ไม่พบข้อมูลกล้อง");
+
+      // ✅ บันทึกลง sessionStorage
+      sessionStorage.setItem("Dashboard_cameraInfo", JSON.stringify(data.data));
+      sessionStorage.setItem("Dashboard_resultPreview", JSON.stringify(data));
+
+      // ✅ ไปหน้า connected
       router.push("/dashboard/connected");
     } catch (err: any) {
       setConnectMessage(err?.message || "เกิดข้อผิดพลาดในการเชื่อมต่อ");
-    } finally {
       setIsConnecting(false);
     }
+  };
+
+  // ✅ ปุ่ม connect (กรอกเอง)
+  const handleConnect = async () => {
+    await connectToCamera(cameraId, token);
+  };
+
+  // ✅ ปุ่ม offence camera
+  const handleOffenceConnect = async () => {
+    const envCamId = process.env.NEXT_PUBLIC_OFF_CAM || "";
+    const envToken = process.env.NEXT_PUBLIC_OFF_TOKEN || "";
+
+    if (!envCamId || !envToken) {
+      setConnectMessage("⚠️ ไม่พบค่าใน .env (NEXT_PUBLIC_OFF_CAM / NEXT_PUBLIC_OFF_TOKEN)");
+      return;
+    }
+
+    await connectToCamera(envCamId, envToken);
+  };
+
+  // ✅ ปุ่ม defensive camera
+  const handleDefensiveConnect = async () => {
+    const envCamId = process.env.NEXT_PUBLIC_DEF_CAM || "";
+    const envToken = process.env.NEXT_PUBLIC_DEF_TOKEN || "";
+
+    if (!envCamId || !envToken) {
+      setConnectMessage("⚠️ ไม่พบค่าใน .env (NEXT_PUBLIC_DEF_CAM / NEXT_PUBLIC_DEF_TOKEN)");
+      return;
+    }
+
+    await connectToCamera(envCamId, envToken);
   };
 
   return (
@@ -46,6 +69,7 @@ export default function DashboardPage() {
       <div className="max-w-3xl mx-auto">
         <div className="w-full rounded-xl bg-white border border-gray-200 shadow p-5">
           <div className="space-y-4">
+            {/* Input Fields */}
             <div className="flex flex-col gap-1">
               <label className="text-sm font-medium text-gray-800">Camera ID</label>
               <input
@@ -68,7 +92,9 @@ export default function DashboardPage() {
               />
             </div>
 
-            <div className="flex items-center gap-3 pt-2">
+            {/* Buttons */}
+            <div className="flex flex-wrap items-center gap-3 pt-3">
+              {/* Manual Connect */}
               <button
                 className="inline-flex items-center justify-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 disabled={!cameraId || !token || isConnecting}
@@ -76,43 +102,39 @@ export default function DashboardPage() {
               >
                 {isConnecting ? "กำลังเชื่อมต่อ..." : "Connect"}
               </button>
+
+              {/* Offence Camera */}
+              <button
+                className="inline-flex items-center justify-center rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={isConnecting}
+                onClick={handleOffenceConnect}
+                title="เชื่อมต่อกล้อง Offence จาก environment"
+              >
+                {isConnecting ? "กำลังเชื่อมต่อ..." : "Offence Camera"}
+              </button>
+
+              {/* Defensive Camera */}
+              <button
+                className="inline-flex items-center justify-center rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={isConnecting}
+                onClick={handleDefensiveConnect}
+                title="เชื่อมต่อกล้อง Defensive จาก environment"
+              >
+                {isConnecting ? "กำลังเชื่อมต่อ..." : "Defensive Camera"}
+              </button>
+
               {connectMessage && (
-                <span className="text-sm text-gray-700">{connectMessage}</span>
+                <span
+                  className={`text-sm ${
+                    connectMessage.includes("ผิดพลาด") || connectMessage.includes("ไม่พบ")
+                      ? "text-red-600"
+                      : "text-gray-700"
+                  }`}
+                >
+                  {connectMessage}
+                </span>
               )}
             </div>
-
-            {cameraInfo && (
-              <div className="rounded-lg border border-gray-200 p-4 bg-gray-50">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-                  <div>
-                    <span className="text-gray-500">Team ID</span>
-                    <div className="font-medium text-gray-900 break-all">{cameraInfo.id}</div>
-                  </div>
-                  <div>
-                    <span className="text-gray-500">Team Name</span>
-                    <div className="font-medium text-gray-900">{cameraInfo.name}</div>
-                  </div>
-                  <div>
-                    <span className="text-gray-500">Location</span>
-                    <div className="font-medium text-gray-900">{cameraInfo.location}</div>
-                  </div>
-                  <div>
-                    <span className="text-gray-500">Token</span>
-                    <div className="font-mono text-gray-900 break-all">{cameraInfo.token}</div>
-                  </div>
-                  <div className="sm:col-span-2">
-                    <span className="text-gray-500">Created At</span>
-                    <div className="font-medium text-gray-900">{new Date(cameraInfo.created_at).toLocaleString()}</div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {resultPreview && (
-              <pre className="mt-2 max-h-64 overflow-auto rounded-md bg-gray-50 border border-gray-200 p-3 text-xs text-gray-800">
-{resultPreview}
-              </pre>
-            )}
           </div>
         </div>
       </div>
