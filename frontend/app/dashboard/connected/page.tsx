@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
+import { io } from "socket.io-client";
 import { fetchDetectionshistory } from "@/app/api";
 import { DetectionItem } from "@/app/type";
 
@@ -24,6 +25,8 @@ export default function ConnectedPage() {
   const [detections, setDetections] = useState<DetectionItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [socketStatus, setSocketStatus] = useState<"connecting" | "connected" | "disconnected">("disconnected");
+  const socketRef = useRef<ReturnType<typeof io> | null>(null);
 
   // โหลดข้อมูลกล้องจาก session
   useEffect(() => {
@@ -77,22 +80,98 @@ export default function ConnectedPage() {
     fetchDetections();
   }, [cameraInfo]);
 
+  // ✅ เชื่อมต่อ Socket.IO
+  useEffect(() => {
+    if (!cameraInfo?.id) return;
+
+    setSocketStatus("connecting");
+
+    // เชื่อมต่อ Socket.IO
+    const socket = io("https://tesa-api.crma.dev", {
+      transports: ["websocket", "polling"],
+    });
+
+    socketRef.current = socket;
+
+    // เมื่อเชื่อมต่อสำเร็จ
+    socket.on("connect", () => {
+      console.log("Socket.IO connected:", socket.id);
+      setSocketStatus("connected");
+      
+      // Emit subscribe_camera
+      socket.emit("subscribe_camera", { cam_id: cameraInfo.id });
+      console.log("Subscribed to camera:", cameraInfo.id);
+    });
+
+    // จัดการ error
+    socket.on("connect_error", (error : string) => {
+      console.error("Socket.IO connection error:", error);
+      setSocketStatus("disconnected");
+    });
+
+    // จัดการ disconnect
+    socket.on("disconnect", (reason: string) => {
+      console.log("Socket.IO disconnected:", reason);
+      setSocketStatus("disconnected");
+    });
+
+    // Cleanup เมื่อ component unmount
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+        socketRef.current = null;
+        setSocketStatus("disconnected");
+      }
+    };
+  }, [cameraInfo?.id]);
+
   return (
-    <div className="min-h-[calc(100vh-2rem)] bg-white rounded-lg shadow p-6">
-      <div className="max-w-5xl mx-auto space-y-6">
+    <div className="min-h-[calc(100vh-2rem)] bg-white rounded-lg shadow p-3">
+      <div className="w-full space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold text-gray-900">Connected</h1>
-          <button
-            className="px-3 py-1.5 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md"
-            onClick={() => {
-              sessionStorage.removeItem("Dashboard_cameraInfo");
-              sessionStorage.removeItem("Dashboard_resultPreview");
-              router.push("/dashboard");
-            }}
-          >
-            Disconnect
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Socket.IO Status Indicator */}
+            <div className="flex items-center gap-2">
+              <div
+                className={`w-3 h-3 rounded-full ${
+                  socketStatus === "connected"
+                    ? "bg-green-500"
+                    : socketStatus === "connecting"
+                    ? "bg-yellow-500 animate-pulse"
+                    : "bg-red-500"
+                }`}
+                title={
+                  socketStatus === "connected"
+                    ? "Socket.IO Connected"
+                    : socketStatus === "connecting"
+                    ? "Connecting..."
+                    : "Socket.IO Disconnected"
+                }
+              />
+              <span className="text-xs text-gray-600">
+                {socketStatus === "connected"
+                  ? "Connected"
+                  : socketStatus === "connecting"
+                  ? "Connecting..."
+                  : "Disconnected"}
+              </span>
+            </div>
+            <button
+              className="px-3 py-1.5 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md"
+              onClick={() => {
+                if (socketRef.current) {
+                  socketRef.current.disconnect();
+                }
+                sessionStorage.removeItem("Dashboard_cameraInfo");
+                sessionStorage.removeItem("Dashboard_resultPreview");
+                router.push("/dashboard");
+              }}
+            >
+              Disconnect
+            </button>
+          </div>
         </div>
 
         {/* ✅ Institute Info Card */}
