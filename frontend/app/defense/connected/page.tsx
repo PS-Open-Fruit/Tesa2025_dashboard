@@ -360,6 +360,18 @@ export default function DefenseConnectedPage() {
                     </button>
                   </div>
                 )}
+                <div className="mt-4 pt-3 border-t border-gray-200">
+                  <button
+                    onClick={() => {
+                      // TODO: Implement send to field functionality
+                      console.log("ส่งข้อมูลถึงภาคสนาม:", selectedMarker);
+                      alert("ส่งข้อมูลถึงภาคสนามเรียบร้อย");
+                    }}
+                    className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md transition-colors"
+                  >
+                    ส่งข้อมูลถึงภาคสนาม
+                  </button>
+                </div>
               </div>
             </div>
           )}
