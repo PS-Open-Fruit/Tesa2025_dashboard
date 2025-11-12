@@ -262,7 +262,7 @@ export default function ConnectedPage() {
             <table className="w-full text-sm text-gray-700">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-4 py-2 text-left font-medium">#</th>
+                  <th className="px-4 py-2 text-left font-medium">id</th>
                   <th className="px-4 py-2 text-left font-medium">Count</th>
                   <th className="px-4 py-2 text-left font-medium">Time</th>
                   <th className="px-4 py-2 text-left font-medium">Image</th>

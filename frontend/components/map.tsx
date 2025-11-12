@@ -27,15 +27,19 @@ interface MapProps {
   latitude: number;
   longitude: number;
   detections: DetectionItem[];
-  onMarkerClick?: (object: DetectionObject) => void;
+  onMarkerClick?: (object: DetectionObject & { isLost?: boolean; isNew?: boolean }) => void;
+  onRemoveDrone?: (objId: string) => void;
 }
 
-export default function Map({ latitude, longitude, detections, onMarkerClick }: MapProps) {
+export default function Map({ latitude, longitude, detections, onMarkerClick, onRemoveDrone }: MapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<mapboxgl.Marker[]>([]);
+  const routesRef = useRef<{ [objId: string]: any }>({});
+  const previousObjectsRef = useRef<Set<string>>(new Set());
   const isMapInitialized = useRef(false);
   const onMarkerClickRef = useRef(onMarkerClick);
+  const onRemoveDroneRef = useRef(onRemoveDrone);
 
   // Initialize map only once
   useEffect(() => {
@@ -61,10 +65,11 @@ export default function Map({ latitude, longitude, detections, onMarkerClick }: 
     };
   }, []); // Only run once on mount
 
-  // Keep onMarkerClick ref up to date
+  // Keep callbacks ref up to date
   useEffect(() => {
     onMarkerClickRef.current = onMarkerClick;
-  }, [onMarkerClick]);
+    onRemoveDroneRef.current = onRemoveDrone;
+  }, [onMarkerClick, onRemoveDrone]);
 
   // Update detection markers when detections change
   useEffect(() => {
@@ -74,41 +79,75 @@ export default function Map({ latitude, longitude, detections, onMarkerClick }: 
     const createMarkers = () => {
       if (!mapRef.current || !mapRef.current.loaded()) return;
 
-      // Remove all old detection markers
+      // Remove all old detection markers and routes
       markersRef.current.forEach((marker) => marker.remove());
       markersRef.current = [];
-
-      // Find detection with latest timestamp
-      if (detections.length === 0) return;
       
-      const latestDetection = detections.reduce((latest, current) => {
-        if (!latest) return current;
-        if (!current) return latest;
-        
-        const latestTime = new Date(latest.timestamp).getTime();
-        const currentTime = new Date(current.timestamp).getTime();
-        
-        return currentTime > latestTime ? current : latest;
+      // Remove old route layers and sources
+      Object.keys(routesRef.current).forEach((objId) => {
+        const map = mapRef.current!;
+        if (map.getLayer(`route-${objId}`)) {
+          map.removeLayer(`route-${objId}`);
+        }
+        if (map.getSource(`route-${objId}`)) {
+          map.removeSource(`route-${objId}`);
+        }
       });
-      
-      if (!latestDetection || !latestDetection.objects) return;
+      routesRef.current = {};
 
-      // Create new markers from the latest detection's objects
+      if (detections.length === 0) {
+        previousObjectsRef.current = new Set();
+        return;
+      }
+
+      // Sort detections by timestamp (oldest to newest)
+      const sortedDetections = [...detections].sort((a, b) => {
+        const timeA = new Date(a.timestamp).getTime();
+        const timeB = new Date(b.timestamp).getTime();
+        return timeA - timeB;
+      });
+
+      // Get latest detection
+      const latestDetection = sortedDetections[sortedDetections.length - 1];
+      if (!latestDetection || !latestDetection.objects) {
+        previousObjectsRef.current = new Set();
+        return;
+      }
+
+      // Get current object IDs
+      const currentObjectIds = new Set(
+        latestDetection.objects.map(obj => obj.obj_id).filter(Boolean)
+      );
+
+      // Find lost objects (were in previous, not in current)
+      const lostObjects = Array.from(previousObjectsRef.current).filter(
+        id => !currentObjectIds.has(id)
+      );
+
+      // Find new objects (not in previous, in current)
+      const newObjects = Array.from(currentObjectIds).filter(
+        id => !previousObjectsRef.current.has(id)
+      );
+
+      // Create markers for current objects
       latestDetection.objects.forEach((obj) => {
         const lat = typeof obj.lat === "string" ? parseFloat(obj.lat) : obj.lat;
         const lng = typeof obj.lng === "string" ? parseFloat(obj.lng) : obj.lng;
 
-        if (!isNaN(lat) && !isNaN(lng)) {
-          // Create marker with click interaction - using drone icon
-          const droneIcon = createDroneIcon("#3b82f6"); // blue color
+        if (!isNaN(lat) && !isNaN(lng) && obj.obj_id) {
+          const isNew = newObjects.includes(obj.obj_id);
+          const isLost = false; // Current objects are not lost
+          
+          // Create marker with appropriate color
+          const droneIcon = createDroneIcon(isLost ? "#ef4444" : "#3b82f6");
           const marker = new mapboxgl.Marker({ 
             element: droneIcon,
-            anchor: "center" // Anchor marker at center point
+            anchor: "center"
           })
             .setLngLat([lng, lat])
             .addTo(mapRef.current!);
           
-          // Add click event to center map on marker and trigger callback
+          // Add click event
           const markerElement = marker.getElement();
           markerElement.style.cursor = "pointer";
           markerElement.addEventListener("click", () => {
@@ -119,15 +158,132 @@ export default function Map({ latitude, longitude, detections, onMarkerClick }: 
                 essential: true,
               });
             }
-            // Trigger callback with marker object data
             if (onMarkerClickRef.current) {
-              onMarkerClickRef.current(obj);
+              onMarkerClickRef.current({ ...obj, isLost, isNew });
             }
           });
           
           markersRef.current.push(marker);
+
+          // Create route for non-new objects (only if not new)
+          if (!isNew) {
+            // Find all positions for this object (up to 5 most recent)
+            const objectPositions: Array<{ lat: number; lng: number }> = [];
+            
+            // Go through detections from newest to oldest
+            for (let i = sortedDetections.length - 1; i >= 0 && objectPositions.length < 6; i--) {
+              const detection = sortedDetections[i];
+              if (detection.objects) {
+                const foundObj = detection.objects.find(o => o.obj_id === obj.obj_id);
+                if (foundObj) {
+                  const objLat = typeof foundObj.lat === "string" ? parseFloat(foundObj.lat) : foundObj.lat;
+                  const objLng = typeof foundObj.lng === "string" ? parseFloat(foundObj.lng) : foundObj.lng;
+                  if (!isNaN(objLat) && !isNaN(objLng)) {
+                    objectPositions.unshift({ lat: objLat, lng: objLng }); // Add to beginning
+                  }
+                }
+              }
+            }
+
+            // Create route if we have at least 2 positions
+            if (objectPositions.length >= 2 && mapRef.current) {
+              const coordinates = objectPositions.map(pos => [pos.lng, pos.lat]);
+              
+              const routeId = `route-${obj.obj_id}`;
+              const sourceId = `route-${obj.obj_id}`;
+              
+              if (!mapRef.current.getSource(sourceId)) {
+                mapRef.current.addSource(sourceId, {
+                  type: 'geojson',
+                  data: {
+                    type: 'Feature',
+                    properties: {},
+                    geometry: {
+                      type: 'LineString',
+                      coordinates: coordinates
+                    }
+                  }
+                });
+
+                mapRef.current.addLayer({
+                  id: routeId,
+                  type: 'line',
+                  source: sourceId,
+                  layout: {
+                    'line-join': 'round',
+                    'line-cap': 'round'
+                  },
+                  paint: {
+                    'line-color': '#3b82f6',
+                    'line-width': 2,
+                    'line-opacity': 0.6
+                  }
+                });
+
+                routesRef.current[obj.obj_id] = { sourceId, layerId: routeId };
+              } else {
+                // Update existing source
+                const source = mapRef.current.getSource(sourceId) as mapboxgl.GeoJSONSource;
+                if (source) {
+                  source.setData({
+                    type: 'Feature',
+                    properties: {},
+                    geometry: {
+                      type: 'LineString',
+                      coordinates: coordinates
+                    }
+                  });
+                }
+              }
+            }
+          }
         }
       });
+
+      // Create markers for lost objects (from previous detection)
+      if (lostObjects.length > 0 && sortedDetections.length > 1) {
+        const previousDetection = sortedDetections[sortedDetections.length - 2];
+        if (previousDetection && previousDetection.objects) {
+          lostObjects.forEach((objId) => {
+            const lostObj = previousDetection.objects!.find(o => o.obj_id === objId);
+            if (lostObj) {
+              const lat = typeof lostObj.lat === "string" ? parseFloat(lostObj.lat) : lostObj.lat;
+              const lng = typeof lostObj.lng === "string" ? parseFloat(lostObj.lng) : lostObj.lng;
+
+              if (!isNaN(lat) && !isNaN(lng)) {
+                // Create red marker for lost object
+                const droneIcon = createDroneIcon("#ef4444"); // red color
+                const marker = new mapboxgl.Marker({ 
+                  element: droneIcon,
+                  anchor: "center"
+                })
+                  .setLngLat([lng, lat])
+                  .addTo(mapRef.current!);
+                
+                const markerElement = marker.getElement();
+                markerElement.style.cursor = "pointer";
+                markerElement.addEventListener("click", () => {
+                  if (mapRef.current) {
+                    mapRef.current.flyTo({
+                      center: [lng, lat],
+                      zoom: 16,
+                      essential: true,
+                    });
+                  }
+                  if (onMarkerClickRef.current) {
+                    onMarkerClickRef.current({ ...lostObj, isLost: true, isNew: false });
+                  }
+                });
+                
+                markersRef.current.push(marker);
+              }
+            }
+          });
+        }
+      }
+
+      // Update previous objects for next comparison
+      previousObjectsRef.current = currentObjectIds;
     };
 
     // Check if map is loaded, if not wait for load event

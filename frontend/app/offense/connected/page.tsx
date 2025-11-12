@@ -27,8 +27,10 @@ export default function OffenseConnectedPage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [socketStatus, setSocketStatus] = useState<"connecting" | "connected" | "disconnected">("disconnected");
   const [currentPage, setCurrentPage] = useState(1);
-  const [selectedMarker, setSelectedMarker] = useState<DetectionObject | null>(null);
+  const [selectedMarker, setSelectedMarker] = useState<(DetectionObject & { isLost?: boolean; isNew?: boolean }) | null>(null);
+  const [lostDrones, setLostDrones] = useState<Set<string>>(new Set());
   const socketRef = useRef<ReturnType<typeof io> | null>(null);
+  const onRemoveDroneRef = useRef<(objId: string) => void>(() => {});
 
   const itemsPerPage = 10;
   const totalPages = Math.ceil(detections.length / itemsPerPage);
@@ -254,6 +256,21 @@ export default function OffenseConnectedPage() {
                 longitude={cameraInfo?.longitude || 100.5018}
                 detections={detections}
                 onMarkerClick={(object) => setSelectedMarker(object)}
+                onRemoveDrone={(objId) => {
+                  setLostDrones(prev => {
+                    const newSet = new Set(prev);
+                    newSet.delete(objId);
+                    return newSet;
+                  });
+                  if (selectedMarker?.obj_id === objId) {
+                    setSelectedMarker(null);
+                  }
+                  // Remove lost drone from detections by filtering it out
+                  setDetections(prev => prev.map(detection => ({
+                    ...detection,
+                    objects: detection.objects?.filter(obj => obj.obj_id !== objId)
+                  })).filter(detection => detection.objects && detection.objects.length > 0));
+                }}
               />
             </div>
           </div>
@@ -273,6 +290,16 @@ export default function OffenseConnectedPage() {
                 </button>
               </div>
               <div className="p-4 space-y-3 overflow-y-auto max-h-[600px]">
+                {selectedMarker.isLost && (
+                  <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-sm font-semibold text-red-700">⚠️ สัญญาณขาดหาย</p>
+                  </div>
+                )}
+                {selectedMarker.isNew && (
+                  <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="text-sm font-semibold text-blue-700">🆕 โดรนใหม่</p>
+                  </div>
+                )}
                 <div>
                   <p className="text-xs text-gray-600 mb-1">Object ID</p>
                   <p className="text-sm font-medium text-gray-900">{selectedMarker.obj_id || '-'}</p>
@@ -309,6 +336,30 @@ export default function OffenseConnectedPage() {
                     </pre>
                   </div>
                 )}
+                {selectedMarker.isLost && selectedMarker.obj_id && (
+                  <div className="mt-4 pt-3 border-t border-gray-200">
+                    <button
+                      onClick={() => {
+                        if (selectedMarker.obj_id) {
+                          setLostDrones(prev => {
+                            const newSet = new Set(prev);
+                            newSet.delete(selectedMarker.obj_id!);
+                            return newSet;
+                          });
+                          // Remove lost drone from detections
+                          setDetections(prev => prev.map(detection => ({
+                            ...detection,
+                            objects: detection.objects?.filter(obj => obj.obj_id !== selectedMarker.obj_id)
+                          })).filter(detection => detection.objects && detection.objects.length > 0));
+                        }
+                        setSelectedMarker(null);
+                      }}
+                      className="w-full px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-md transition-colors"
+                    >
+                      ลบโดรน
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -331,7 +382,7 @@ export default function OffenseConnectedPage() {
             <table className="w-full text-sm text-gray-700">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-4 py-2 text-left font-medium">#</th>
+                  <th className="px-4 py-2 text-left font-medium">id</th>
                   <th className="px-4 py-2 text-left font-medium">Count</th>
                   <th className="px-4 py-2 text-left font-medium">Time</th>
                   <th className="px-4 py-2 text-left font-medium">Image</th>
