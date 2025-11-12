@@ -4,6 +4,7 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import Map, { Marker, MapRef } from "react-map-gl/mapbox-legacy";
 import { useRef, useState, useEffect } from "react";
 import { io } from "socket.io-client";
+import { TbDrone } from "react-icons/tb";
 import type { DetectionItem } from "@/app/type";
 
 export default function IntegationPage() {
@@ -215,7 +216,6 @@ export default function IntegationPage() {
                 key={`left-${p.name}-${idx}`}
                 longitude={p.longitude}
                 latitude={p.latitude}
-                color="red"
                 onClick={(e) => {
                   e.originalEvent.stopPropagation();
                   setSelectedPlaceLeft(p);
@@ -225,7 +225,9 @@ export default function IntegationPage() {
                     essential: true 
                   });
                 }}
-              />
+              >
+                <TbDrone size={32} color="#ef4444" style={{ cursor: "pointer" }} />
+              </Marker>
             ))}
           </Map>
           
@@ -290,7 +292,6 @@ export default function IntegationPage() {
                 key={`right-${p.name}-${idx}`}
                 longitude={p.longitude}
                 latitude={p.latitude}
-                color="blue"
                 onClick={(e) => {
                   e.originalEvent.stopPropagation();
                   setSelectedPlaceRight(p);
@@ -300,7 +301,9 @@ export default function IntegationPage() {
                     essential: true 
                   });
                 }}
-              />
+              >
+                <TbDrone size={32} color="#3b82f6" style={{ cursor: "pointer" }} />
+              </Marker>
             ))}
           </Map>
           

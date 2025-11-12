@@ -118,7 +118,16 @@ export default function OffenseConnectedPage() {
 
     socket.on('object_detection', (data : DetectionItem) => {
       console.log('Received object detection:', data);
-      setDetections(prev => [...prev, data]);
+      setDetections(prev => {
+        // Check if detection with same id already exists to avoid duplicates
+        const exists = prev.some(d => d.id === data.id);
+        if (exists) {
+          // Update existing detection instead of adding duplicate
+          return prev.map(d => d.id === data.id ? data : d);
+        }
+        // Add new detection
+        return [...prev, data];
+      });
       // Process detection data here
     });
 
@@ -330,7 +339,7 @@ export default function OffenseConnectedPage() {
               </thead>
               <tbody>
                 {detections.length === 0 ? (
-                  <tr>
+                  <tr key="no-data">
                     <td
                       colSpan={4}
                       className="px-4 py-3 text-center text-gray-500"

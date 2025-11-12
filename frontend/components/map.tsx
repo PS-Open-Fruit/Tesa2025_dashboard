@@ -1,7 +1,27 @@
 "use client";
 import { useEffect, useRef } from "react";
+import { createRoot } from "react-dom/client";
 import mapboxgl from "mapbox-gl";
+import { TbDrone } from "react-icons/tb";
 import type { DetectionItem, DetectionObject } from "@/app/type";
+
+// Create custom drone icon element using react-icons
+const createDroneIcon = (color: string = "#3b82f6") => {
+  const el = document.createElement("div");
+  el.className = "drone-marker";
+  el.style.width = "32px";
+  el.style.height = "32px";
+  el.style.cursor = "pointer";
+  el.style.display = "flex";
+  el.style.alignItems = "center";
+  el.style.justifyContent = "center";
+  
+  // Render React icon component into the element
+  const root = createRoot(el);
+  root.render(<TbDrone size={32} color={color} />);
+  
+  return el;
+};
 
 interface MapProps {
   latitude: number;
@@ -14,7 +34,6 @@ export default function Map({ latitude, longitude, detections, onMarkerClick }: 
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<mapboxgl.Marker[]>([]);
-  const cameraMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const isMapInitialized = useRef(false);
   const onMarkerClickRef = useRef(onMarkerClick);
 
@@ -33,21 +52,9 @@ export default function Map({ latitude, longitude, detections, onMarkerClick }: 
     mapRef.current = map;
     isMapInitialized.current = true;
 
-    // Wait for map to load before creating markers
-    map.on("load", () => {
-      // Marker for the camera (only create once, no popup)
-      const cameraMarker = new mapboxgl.Marker({ color: "red" })
-        .setLngLat([longitude, latitude])
-        .addTo(map);
-      cameraMarkerRef.current = cameraMarker;
-    });
-
     return () => {
       // Cleanup all markers
       markersRef.current.forEach((marker) => marker.remove());
-      if (cameraMarkerRef.current) {
-        cameraMarkerRef.current.remove();
-      }
       map.remove();
       mapRef.current = null;
       isMapInitialized.current = false;
@@ -58,13 +65,6 @@ export default function Map({ latitude, longitude, detections, onMarkerClick }: 
   useEffect(() => {
     onMarkerClickRef.current = onMarkerClick;
   }, [onMarkerClick]);
-
-  // Update camera marker position when latitude/longitude change (without resetting viewport)
-  useEffect(() => {
-    if (cameraMarkerRef.current && mapRef.current) {
-      cameraMarkerRef.current.setLngLat([longitude, latitude]);
-    }
-  }, [latitude, longitude]);
 
   // Update detection markers when detections change
   useEffect(() => {
@@ -99,8 +99,12 @@ export default function Map({ latitude, longitude, detections, onMarkerClick }: 
         const lng = typeof obj.lng === "string" ? parseFloat(obj.lng) : obj.lng;
 
         if (!isNaN(lat) && !isNaN(lng)) {
-          // Create marker with click interaction
-          const marker = new mapboxgl.Marker({ color: "blue" })
+          // Create marker with click interaction - using drone icon
+          const droneIcon = createDroneIcon("#3b82f6"); // blue color
+          const marker = new mapboxgl.Marker({ 
+            element: droneIcon,
+            anchor: "center" // Anchor marker at center point
+          })
             .setLngLat([lng, lat])
             .addTo(mapRef.current!);
           
