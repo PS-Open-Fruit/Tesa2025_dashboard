@@ -220,7 +220,7 @@ export default function DroneSummaryPage() {
           </div>
           <Link 
             href="/"
-            className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg flex items-center gap-2 transition-colors border border-slate-700"
+            className="px-4 py-2 bg-slate-800 hover:bg-slate-700 hover:scale-105 hover:shadow-lg text-white rounded-lg flex items-center gap-2 transition-all duration-200 border border-slate-700"
           >
             <Icon icon="mdi:arrow-left" width="20" height="20" />
             Back to Map
@@ -287,30 +287,30 @@ export default function DroneSummaryPage() {
           <div className="flex gap-2">
             <button
               onClick={() => setFilterTeam("all")}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                 filterTeam === "all"
-                  ? "bg-purple-600 text-white"
-                  : "bg-slate-700 text-slate-300 hover:bg-slate-600"
+                  ? "bg-purple-600 text-white shadow-lg shadow-purple-500/50"
+                  : "bg-slate-700 text-slate-300 hover:bg-slate-600 hover:scale-105 hover:shadow-md"
               }`}
             >
               All Teams
             </button>
             <button
               onClick={() => setFilterTeam("defense")}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                 filterTeam === "defense"
-                  ? "bg-blue-600 text-white"
-                  : "bg-slate-700 text-slate-300 hover:bg-slate-600"
+                  ? "bg-blue-600 text-white shadow-lg shadow-blue-500/50"
+                  : "bg-slate-700 text-slate-300 hover:bg-slate-600 hover:scale-105 hover:shadow-md"
               }`}
             >
               Defense
             </button>
             <button
               onClick={() => setFilterTeam("offense")}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                 filterTeam === "offense"
-                  ? "bg-red-600 text-white"
-                  : "bg-slate-700 text-slate-300 hover:bg-slate-600"
+                  ? "bg-red-600 text-white shadow-lg shadow-red-500/50"
+                  : "bg-slate-700 text-slate-300 hover:bg-slate-600 hover:scale-105 hover:shadow-md"
               }`}
             >
               Offense
@@ -361,8 +361,8 @@ export default function DroneSummaryPage() {
                       <button
                         key={`${drone.obj_id}-${teamName}`}
                         onClick={() => setSelectedDrone(drone)}
-                        className={`w-full p-4 text-left hover:bg-slate-750 transition-colors ${
-                          selectedDrone?.obj_id === drone.obj_id && getTeamName(selectedDrone) === teamName ? "bg-slate-700" : ""
+                        className={`w-full p-4 text-left hover:bg-slate-700 hover:shadow-lg hover:scale-[1.02] transition-all duration-200 ${
+                          selectedDrone?.obj_id === drone.obj_id && getTeamName(selectedDrone) === teamName ? "bg-slate-700 shadow-lg" : ""
                         }`}
                       >
                         <div className="flex items-start justify-between">

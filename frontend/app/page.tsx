@@ -306,13 +306,13 @@ export default function RootPage() {
       ? new Date(offenseDetections[0].timestamp).getTime()
       : 0;
 
-    // Time since last detection
+    // Time since last detection (ensure positive values only)
     const timeSinceDefense = latestDefenseTime > 0 
-      ? Math.floor((now - latestDefenseTime) / 1000)
+      ? Math.max(0, Math.floor((now - latestDefenseTime) / 1000))
       : null;
     
     const timeSinceOffense = latestOffenseTime > 0 
-      ? Math.floor((now - latestOffenseTime) / 1000)
+      ? Math.max(0, Math.floor((now - latestOffenseTime) / 1000))
       : null;
 
     return {
@@ -362,7 +362,7 @@ export default function RootPage() {
             </div>
             <button
               onClick={handleHistorySearch}
-              className="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
+              className="px-6 py-2 bg-purple-600 hover:bg-purple-700 hover:shadow-lg hover:shadow-purple-500/50 hover:scale-105 text-white rounded-lg font-medium transition-all duration-200 flex items-center gap-2"
             >
               <Icon icon="mdi:magnify" width="20" height="20" />
               Search
@@ -443,10 +443,10 @@ export default function RootPage() {
             <div className="space-y-2">
               <button
                 onClick={() => setViewMode("all")}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all font-medium ${
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 font-medium ${
                   viewMode === "all" 
                     ? "bg-linear-to-r from-purple-600 to-purple-500 text-white shadow-lg shadow-purple-500/50 scale-105" 
-                    : "bg-slate-700 text-slate-300 hover:bg-slate-600 hover:scale-102"
+                    : "bg-slate-700 text-slate-300 hover:bg-slate-600 hover:scale-105 hover:shadow-md"
                 }`}
               >
                 <Icon icon="mdi:eye" width="20" height="20" />
@@ -455,10 +455,10 @@ export default function RootPage() {
               </button>
               <button
                 onClick={() => setViewMode("defense")}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all font-medium ${
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 font-medium ${
                   viewMode === "defense" 
                     ? "bg-linear-to-r from-blue-600 to-blue-500 text-white shadow-lg shadow-blue-500/50 scale-105" 
-                    : "bg-slate-700 text-slate-300 hover:bg-slate-600 hover:scale-102"
+                    : "bg-slate-700 text-slate-300 hover:bg-slate-600 hover:scale-105 hover:shadow-md"
                 }`}
               >
                 <Icon icon="mdi:shield" width="20" height="20" />
@@ -467,10 +467,10 @@ export default function RootPage() {
               </button>
               <button
                 onClick={() => setViewMode("offense")}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all font-medium ${
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 font-medium ${
                   viewMode === "offense" 
                     ? "bg-linear-to-r from-red-600 to-red-500 text-white shadow-lg shadow-red-500/50 scale-105" 
-                    : "bg-slate-700 text-slate-300 hover:bg-slate-600 hover:scale-102"
+                    : "bg-slate-700 text-slate-300 hover:bg-slate-600 hover:scale-105 hover:shadow-md"
                 }`}
               >
                 <Icon icon="mdi:sword" width="20" height="20" />
@@ -479,10 +479,10 @@ export default function RootPage() {
               </button>
               <button
                 onClick={() => setViewMode("split")}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all font-medium ${
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 font-medium ${
                   viewMode === "split" 
                     ? "bg-linear-to-r from-emerald-600 to-emerald-500 text-white shadow-lg shadow-emerald-500/50 scale-105" 
-                    : "bg-slate-700 text-slate-300 hover:bg-slate-600 hover:scale-102"
+                    : "bg-slate-700 text-slate-300 hover:bg-slate-600 hover:scale-105 hover:shadow-md"
                 }`}
               >
                 <Icon icon="mdi:view-split-vertical" width="20" height="20" />
@@ -735,10 +735,10 @@ export default function RootPage() {
                     </div>
                   </div>
                   <button
-                    className="p-2 hover:bg-slate-700 rounded-lg transition-colors"
+                    className="p-2 hover:bg-slate-700 hover:scale-110 rounded-lg transition-all duration-200"
                     onClick={() => setSelectedMarker(null)}
                   >
-                    <Icon icon="mdi:close" width="20" height="20" className="text-slate-400" />
+                    <Icon icon="mdi:close" width="20" height="20" className="text-slate-400 hover:text-white" />
                   </button>
                 </div>
 
