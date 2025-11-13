@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { fetchCameraInfo } from "../api";
+import { Icon } from "@iconify/react";
 
 export default function OffensePage() {
   const [cameraId, setCameraId] = useState("");
@@ -52,70 +53,129 @@ export default function OffensePage() {
   };
 
   return (
-    <div className="w-full min-h-[calc(100vh-2rem)] rounded-lg overflow-hidden shadow bg-white p-6">
-      <div className="max-w-3xl mx-auto">
-        <div className="w-full rounded-xl bg-white border border-gray-200 shadow p-5">
-          <div className="space-y-4">
-            {/* Input Fields */}
-            <div className="flex flex-col gap-1">
-              <label className="text-sm font-medium text-gray-800">Camera ID</label>
-              <input
-                type="text"
-                placeholder="กรอก Camera ID"
-                value={cameraId}
-                onChange={(e) => setCameraId(e.target.value)}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
-              />
-            </div>
+    <div className="w-full min-h-[calc(100vh-10rem)] flex items-center justify-center p-6">
+      <div className="max-w-2xl w-full">
+        {/* Header Card */}
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-red-500 to-red-600 rounded-2xl shadow-lg mb-4">
+            <Icon icon="mdi:sword" width="48" height="48" className="text-white" />
+          </div>
+          <h1 className="text-3xl font-bold text-white mb-2">Offense Dashboard</h1>
+          <p className="text-slate-400">Connect to your offensive camera system</p>
+        </div>
 
-            <div className="flex flex-col gap-1">
-              <label className="text-sm font-medium text-gray-800">Token</label>
-              <input
-                type="text"
-                placeholder="กรอก Token"
-                value={token}
-                onChange={(e) => setToken(e.target.value)}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
-              />
+        {/* Connection Card */}
+        <div className="bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl p-8">
+          <div className="space-y-6">
+            {/* Input Fields */}
+            <div className="space-y-4">
+              <div className="flex flex-col gap-2">
+                <label className="text-sm font-semibold text-slate-300 flex items-center gap-2">
+                  <Icon icon="mdi:camera" width="18" height="18" className="text-red-400" />
+                  Camera ID
+                </label>
+                <input
+                  type="text"
+                  placeholder="Enter Camera ID"
+                  value={cameraId}
+                  onChange={(e) => setCameraId(e.target.value)}
+                  className="w-full rounded-lg border border-slate-600 bg-slate-700 px-4 py-3 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
+                />
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <label className="text-sm font-semibold text-slate-300 flex items-center gap-2">
+                  <Icon icon="mdi:key" width="18" height="18" className="text-red-400" />
+                  Access Token
+                </label>
+                <input
+                  type="password"
+                  placeholder="Enter Access Token"
+                  value={token}
+                  onChange={(e) => setToken(e.target.value)}
+                  className="w-full rounded-lg border border-slate-600 bg-slate-700 px-4 py-3 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
+                />
+              </div>
             </div>
 
             {/* Buttons */}
-            <div className="flex flex-wrap items-center gap-3 pt-3">
-              {/* Manual Connect */}
+            <div className="space-y-3 pt-2">
               <button
-                className="inline-flex items-center justify-center rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-red-600 to-red-500 px-6 py-3 text-base font-semibold text-white hover:from-red-700 hover:to-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
                 disabled={!cameraId || !token || isConnecting}
                 onClick={handleConnect}
               >
-                {isConnecting ? "กำลังเชื่อมต่อ..." : "Connect"}
+                {isConnecting ? (
+                  <>
+                    <Icon icon="mdi:loading" width="20" height="20" className="animate-spin" />
+                    <span>Connecting...</span>
+                  </>
+                ) : (
+                  <>
+                    <Icon icon="mdi:lan-connect" width="20" height="20" />
+                    <span>Connect Manual</span>
+                  </>
+                )}
               </button>
 
-              {/* Offence Camera */}
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-slate-600"></div>
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="px-2 bg-slate-800 text-slate-400">OR</span>
+                </div>
+              </div>
+
               <button
-                className="inline-flex items-center justify-center rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-slate-700 border-2 border-red-500/50 px-6 py-3 text-base font-semibold text-white hover:bg-slate-600 hover:border-red-400 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                 disabled={isConnecting}
                 onClick={handleOffenceConnect}
-                title="เชื่อมต่อกล้อง Offense จาก environment"
+                title="Quick connect to pre-configured offense camera"
               >
-                {isConnecting ? "กำลังเชื่อมต่อ..." : "Offense Camera"}
+                {isConnecting ? (
+                  <>
+                    <Icon icon="mdi:loading" width="20" height="20" className="animate-spin" />
+                    <span>Connecting...</span>
+                  </>
+                ) : (
+                  <>
+                    <Icon icon="mdi:sword-cross" width="20" height="20" className="text-red-400" />
+                    <span>Offense Camera (Quick Connect)</span>
+                  </>
+                )}
               </button>
-
-              {connectMessage && (
-                <span
-                  className={`text-sm ${
-                    connectMessage.includes("ผิดพลาด") || connectMessage.includes("ไม่พบ")
-                      ? "text-red-600"
-                      : "text-gray-700"
-                  }`}
-                >
-                  {connectMessage}
-                </span>
-              )}
             </div>
+
+            {/* Status Message */}
+            {connectMessage && (
+              <div className={`p-4 rounded-lg ${
+                connectMessage.includes("ผิดพลาด") || connectMessage.includes("ไม่พบ")
+                  ? "bg-red-500/10 border border-red-500/50"
+                  : "bg-red-500/10 border border-red-500/50"
+              }`}>
+                <div className="flex items-start gap-3">
+                  <Icon 
+                    icon={connectMessage.includes("ผิดพลาด") || connectMessage.includes("ไม่พบ") ? "mdi:alert-circle" : "mdi:information"} 
+                    width="20" 
+                    height="20" 
+                    className={connectMessage.includes("ผิดพลาด") || connectMessage.includes("ไม่พบ") ? "text-red-400 mt-0.5" : "text-red-400 mt-0.5"}
+                  />
+                  <p className="text-sm text-slate-200">{connectMessage}</p>
+                </div>
+              </div>
+            )}
           </div>
+        </div>
+
+        {/* Info Footer */}
+        <div className="mt-6 text-center">
+          <p className="text-xs text-slate-500">
+            <Icon icon="mdi:shield-lock" className="inline mr-1" />
+            Secure connection established via HTTPS
+          </p>
         </div>
       </div>
     </div>
   );
 }
-
