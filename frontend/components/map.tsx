@@ -31,9 +31,10 @@ interface MapProps {
   onMarkerClick?: (object: DetectionObject & { isLost?: boolean; isNew?: boolean; team?: string }) => void;
   onRemoveDrone?: (objId: string) => void;
   teamColors?: { [camId: string]: string }; // Map camera IDs to colors
+  onRecenterChange?: (isManual: boolean) => void; // Callback when manual mode changes
 }
 
-export default function Map({ latitude = 14.3026, longitude = 101.1653, detections = [], onMarkerClick, teamColors }: MapProps) {
+export default function Map({ latitude = 14.3026, longitude = 101.1653, detections = [], onMarkerClick, teamColors, onRecenterChange }: MapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<mapboxgl.Marker[]>([]);
@@ -42,6 +43,7 @@ export default function Map({ latitude = 14.3026, longitude = 101.1653, detectio
   
   const [mapStyle, setMapStyle] = useState<"streets" | "satellite">("streets");
   const [isStyleLoaded, setIsStyleLoaded] = useState(false);
+  const [isManualMode, setIsManualMode] = useState(false);
 
   // Get color for a detection based on camera ID
   const getMarkerColor = useCallback((camId: string) => {
@@ -66,6 +68,25 @@ export default function Map({ latitude = 14.3026, longitude = 101.1653, detectio
     map.on('load', () => {
       setIsStyleLoaded(true);
     });
+
+    // Detect user interactions (zoom, pan) and switch to manual mode
+    const handleUserInteraction = () => {
+      if (!isManualMode) {
+        setIsManualMode(true);
+        if (onRecenterChange) {
+          onRecenterChange(true);
+        }
+      }
+    };
+
+    map.on('zoomstart', (e: any) => {
+      // Only switch to manual if not triggered programmatically
+      if (e.originalEvent) {
+        handleUserInteraction();
+      }
+    });
+
+    map.on('dragstart', handleUserInteraction);
 
     mapRef.current = map;
     isMapInitialized.current = true;
@@ -247,8 +268,8 @@ export default function Map({ latitude = 14.3026, longitude = 101.1653, detectio
       }
     });
 
-    // Auto-fit bounds to show all markers
-    if (markersRef.current.length > 0) {
+    // Auto-fit bounds to show all markers (only if not in manual mode)
+    if (markersRef.current.length > 0 && !isManualMode) {
       const bounds = new mapboxgl.LngLatBounds();
 
       markersRef.current.forEach((marker) => {
@@ -261,7 +282,28 @@ export default function Map({ latitude = 14.3026, longitude = 101.1653, detectio
         duration: 1000
       });
     }
-  }, [detections, getMarkerColor, onMarkerClick, isStyleLoaded]);
+  }, [detections, getMarkerColor, onMarkerClick, isStyleLoaded, isManualMode]);
+
+  // Function to recenter and return to auto mode
+  const handleRecenter = useCallback(() => {
+    if (!mapRef.current || markersRef.current.length === 0) return;
+
+    const bounds = new mapboxgl.LngLatBounds();
+    markersRef.current.forEach((marker) => {
+      bounds.extend(marker.getLngLat());
+    });
+
+    mapRef.current.fitBounds(bounds, {
+      padding: { top: 100, bottom: 100, left: 100, right: 100 },
+      maxZoom: 15,
+      duration: 1000
+    });
+
+    setIsManualMode(false);
+    if (onRecenterChange) {
+      onRecenterChange(false);
+    }
+  }, [onRecenterChange]);
 
   return (
     <div className="relative w-full h-full">
@@ -283,6 +325,25 @@ export default function Map({ latitude = 14.3026, longitude = 101.1653, detectio
           {mapStyle === "streets" ? "Satellite" : "Streets"}
         </span>
       </button>
+
+      {/* Recenter Button - Shows when in manual mode */}
+      {isManualMode && (
+        <button
+          onClick={handleRecenter}
+          className="absolute top-4 left-40 z-10 bg-purple-600/95 backdrop-blur-md rounded-lg px-4 py-2 border border-purple-500 hover:bg-purple-700 transition-all shadow-lg flex items-center gap-2 animate-slideDown"
+          title="Recenter and auto-follow drones"
+        >
+          <Icon 
+            icon="mdi:target" 
+            width="20" 
+            height="20" 
+            className="text-white"
+          />
+          <span className="text-sm text-white font-medium">
+            Recenter
+          </span>
+        </button>
+      )}
     </div>
   );
 }
