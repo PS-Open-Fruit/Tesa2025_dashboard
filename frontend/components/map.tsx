@@ -27,11 +27,12 @@ interface MapProps {
   latitude: number;
   longitude: number;
   detections: DetectionItem[];
-  onMarkerClick?: (object: DetectionObject & { isLost?: boolean; isNew?: boolean }) => void;
+  onMarkerClick?: (object: DetectionObject & { isLost?: boolean; isNew?: boolean; team?: string }) => void;
   onRemoveDrone?: (objId: string) => void;
+  teamColors?: { [camId: string]: string }; // Map camera IDs to colors
 }
 
-export default function Map({ latitude, longitude, detections, onMarkerClick, onRemoveDrone }: MapProps) {
+export default function Map({ latitude, longitude, detections, onMarkerClick, onRemoveDrone, teamColors }: MapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<mapboxgl.Marker[]>([]);
@@ -40,6 +41,15 @@ export default function Map({ latitude, longitude, detections, onMarkerClick, on
   const isMapInitialized = useRef(false);
   const onMarkerClickRef = useRef(onMarkerClick);
   const onRemoveDroneRef = useRef(onRemoveDrone);
+
+  // Get color for a detection based on camera ID
+  const getMarkerColor = (detection: DetectionItem, isLost: boolean = false) => {
+    if (isLost) return "#ef4444"; // Red for lost
+    if (teamColors && detection.cam_id && teamColors[detection.cam_id]) {
+      return teamColors[detection.cam_id];
+    }
+    return "#3b82f6"; // Default blue
+  };
 
   // Initialize map only once
   useEffect(() => {
@@ -138,8 +148,11 @@ export default function Map({ latitude, longitude, detections, onMarkerClick, on
           const isNew = newObjects.includes(obj.obj_id);
           const isLost = false; // Current objects are not lost
           
+          // Get color based on camera ID (team)
+          const markerColor = getMarkerColor(latestDetection, isLost);
+          
           // Create marker with appropriate color
-          const droneIcon = createDroneIcon(isLost ? "#ef4444" : "#3b82f6");
+          const droneIcon = createDroneIcon(markerColor);
           const marker = new mapboxgl.Marker({ 
             element: droneIcon,
             anchor: "center"
@@ -159,7 +172,7 @@ export default function Map({ latitude, longitude, detections, onMarkerClick, on
               });
             }
             if (onMarkerClickRef.current) {
-              onMarkerClickRef.current({ ...obj, isLost, isNew });
+              onMarkerClickRef.current({ ...obj, isLost, isNew, team: latestDetection.cam_id });
             }
           });
           
@@ -284,6 +297,24 @@ export default function Map({ latitude, longitude, detections, onMarkerClick, on
 
       // Update previous objects for next comparison
       previousObjectsRef.current = currentObjectIds;
+
+      // Auto-fit bounds to show all markers
+      if (markersRef.current.length > 0 && mapRef.current) {
+        const bounds = new mapboxgl.LngLatBounds();
+        
+        // Add all marker positions to bounds
+        markersRef.current.forEach(marker => {
+          const lngLat = marker.getLngLat();
+          bounds.extend(lngLat);
+        });
+
+        // Fit map to bounds with padding
+        mapRef.current.fitBounds(bounds, {
+          padding: { top: 100, bottom: 100, left: 100, right: 100 },
+          maxZoom: 15,
+          duration: 1000
+        });
+      }
     };
 
     // Check if map is loaded, if not wait for load event
