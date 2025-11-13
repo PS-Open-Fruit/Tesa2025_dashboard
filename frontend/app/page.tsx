@@ -354,14 +354,6 @@ export default function RootPage() {
         <div className="absolute top-4 left-4 right-4 z-10 flex items-center justify-between gap-4">
           <div className="bg-gradient-to-r from-slate-800/95 to-slate-900/95 backdrop-blur-md rounded-lg shadow-lg px-6 py-3 border border-slate-700">
             <div className="flex items-center gap-3">
-              <Icon icon="mdi:map-marker-radius" width="24" height="24" className="text-purple-400" />
-              <div>
-                <h2 className="text-lg font-bold text-white">Unified Tactical Map</h2>
-                <p className="text-xs text-slate-400">
-                  {viewMode === "all" ? "Defense & Offense Combined" : 
-                   viewMode === "defense" ? "Defense Operations" : "Offense Operations"}
-                </p>
-              </div>
             </div>
           </div>
 

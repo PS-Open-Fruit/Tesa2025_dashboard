@@ -1,8 +1,9 @@
 "use client";
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import { createRoot } from "react-dom/client";
 import mapboxgl from "mapbox-gl";
 import { TbDrone } from "react-icons/tb";
+import { Icon } from "@iconify/react";
 import type { DetectionItem, DetectionObject } from "@/app/type";
 
 // Create custom drone icon element using react-icons
@@ -36,7 +37,10 @@ export default function Map({ latitude = 14.3026, longitude = 101.1653, detectio
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<mapboxgl.Marker[]>([]);
+  const routeLayersRef = useRef<Set<string>>(new Set());
   const isMapInitialized = useRef(false);
+  
+  const [mapStyle, setMapStyle] = useState<"streets" | "satellite">("streets");
 
   // Get color for a detection based on camera ID
   const getMarkerColor = useCallback((camId: string) => {
@@ -73,6 +77,17 @@ export default function Map({ latitude = 14.3026, longitude = 101.1653, detectio
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only initialize once on mount
 
+  // Change map style when toggled
+  useEffect(() => {
+    if (!mapRef.current) return;
+    
+    const styleUrl = mapStyle === "satellite" 
+      ? "mapbox://styles/mapbox/satellite-streets-v12"
+      : "mapbox://styles/mapbox/streets-v11";
+    
+    mapRef.current.setStyle(styleUrl);
+  }, [mapStyle]);
+
   // Update markers when detections change
   useEffect(() => {
     if (!mapRef.current || !mapRef.current.loaded()) return;
@@ -80,6 +95,17 @@ export default function Map({ latitude = 14.3026, longitude = 101.1653, detectio
     // Clear all existing markers
     markersRef.current.forEach((marker) => marker.remove());
     markersRef.current = [];
+
+    // Clear all route layers
+    routeLayersRef.current.forEach((layerId) => {
+      if (mapRef.current!.getLayer(layerId)) {
+        mapRef.current!.removeLayer(layerId);
+      }
+      if (mapRef.current!.getSource(layerId)) {
+        mapRef.current!.removeSource(layerId);
+      }
+    });
+    routeLayersRef.current.clear();
 
     if (!detections || detections.length === 0) return;
 
@@ -141,6 +167,61 @@ export default function Map({ latitude = 14.3026, longitude = 101.1653, detectio
       markersRef.current.push(marker);
     });
 
+    // Create route paths for each drone
+    objectsMap.forEach(({ obj, camId }) => {
+      // Find all positions for this object from all detections
+      const positions: Array<{ lng: number; lat: number }> = [];
+      
+      sortedDetections.forEach((detection) => {
+        if (detection.objects && detection.cam_id === camId) {
+          const foundObj = detection.objects.find(o => o.obj_id === obj.obj_id);
+          if (foundObj) {
+            const lat = typeof foundObj.lat === "string" ? parseFloat(foundObj.lat) : foundObj.lat;
+            const lng = typeof foundObj.lng === "string" ? parseFloat(foundObj.lng) : foundObj.lng;
+            if (!isNaN(lat) && !isNaN(lng)) {
+              positions.push({ lng, lat });
+            }
+          }
+        }
+      });
+
+      // Draw route if we have at least 2 positions
+      if (positions.length >= 2) {
+        const routeId = `route-${obj.obj_id}`;
+        const coordinates = positions.map(pos => [pos.lng, pos.lat]);
+        const routeColor = getMarkerColor(camId);
+
+        mapRef.current!.addSource(routeId, {
+          type: 'geojson',
+          data: {
+            type: 'Feature',
+            properties: {},
+            geometry: {
+              type: 'LineString',
+              coordinates: coordinates
+            }
+          }
+        });
+
+        mapRef.current!.addLayer({
+          id: routeId,
+          type: 'line',
+          source: routeId,
+          layout: {
+            'line-join': 'round',
+            'line-cap': 'round'
+          },
+          paint: {
+            'line-color': routeColor,
+            'line-width': 3,
+            'line-opacity': 0.7
+          }
+        });
+
+        routeLayersRef.current.add(routeId);
+      }
+    });
+
     // Auto-fit bounds to show all markers
     if (markersRef.current.length > 0) {
       const bounds = new mapboxgl.LngLatBounds();
@@ -157,5 +238,26 @@ export default function Map({ latitude = 14.3026, longitude = 101.1653, detectio
     }
   }, [detections, getMarkerColor, onMarkerClick]);
 
-  return <div ref={mapContainer} className="w-full h-full" />;
+  return (
+    <div className="relative w-full h-full">
+      <div ref={mapContainer} className="w-full h-full" />
+      
+      {/* Satellite Toggle Button */}
+      <button
+        onClick={() => setMapStyle(prev => prev === "streets" ? "satellite" : "streets")}
+        className="absolute top-4 left-4 z-10 bg-slate-800/95 backdrop-blur-md rounded-lg px-4 py-2 border border-slate-700 hover:bg-slate-700 transition-all shadow-lg flex items-center gap-2"
+        title={mapStyle === "streets" ? "Switch to Satellite" : "Switch to Streets"}
+      >
+        <Icon 
+          icon={mapStyle === "streets" ? "mdi:satellite-variant" : "mdi:map"} 
+          width="20" 
+          height="20" 
+          className="text-slate-300"
+        />
+        <span className="text-sm text-white font-medium">
+          {mapStyle === "streets" ? "Satellite" : "Streets"}
+        </span>
+      </button>
+    </div>
+  );
 }
