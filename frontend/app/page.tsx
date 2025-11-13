@@ -25,7 +25,7 @@ export default function RootPage() {
   const [selectedMarker, setSelectedMarker] = useState<(DetectionObject & { isLost?: boolean; isNew?: boolean; team?: string }) | null>(null);
   const [selectedImage, setSelectedImage] = useState<{ url: string; timestamp: string; info: any } | null>(null);
   
-  const [viewMode, setViewMode] = useState<"all" | "offense" | "defense">("all");
+  const [viewMode, setViewMode] = useState<"all" | "offense" | "defense" | "split">("all");
   const [showStats, setShowStats] = useState(true);
   
   const [isLoadingDefense, setIsLoadingDefense] = useState(false);
@@ -262,6 +262,18 @@ export default function RootPage() {
                   <span className="text-sm">Offense Only</span>
                   {viewMode === "offense" && <Icon icon="mdi:check-circle" width="18" height="18" className="ml-auto" />}
                 </button>
+                <button
+                  onClick={() => setViewMode("split")}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all font-medium ${
+                    viewMode === "split" 
+                      ? "bg-gradient-to-r from-emerald-600 to-emerald-500 text-white shadow-lg shadow-emerald-500/50 scale-105" 
+                      : "bg-slate-700 text-slate-300 hover:bg-slate-600 hover:scale-102"
+                  }`}
+                >
+                  <Icon icon="mdi:view-split-vertical" width="20" height="20" />
+                  <span className="text-sm">Split View</span>
+                  {viewMode === "split" && <Icon icon="mdi:check-circle" width="18" height="18" className="ml-auto" />}
+                </button>
               </div>
             </div>
 
@@ -350,33 +362,73 @@ export default function RootPage() {
 
       {/* Main Map Area */}
       <div className="flex-1 relative rounded-xl overflow-hidden shadow-2xl bg-slate-900 border border-slate-700">
-        {/* Map Header */}
-        <div className="absolute top-4 left-4 right-4 z-10 flex items-center justify-between gap-4">
-          <div className="bg-gradient-to-r from-slate-800/95 to-slate-900/95 backdrop-blur-md rounded-lg shadow-lg px-6 py-3 border border-slate-700">
-            <div className="flex items-center gap-3">
+        {/* Loading Indicator */}
+        {(isLoadingDefense || isLoadingOffense) && (
+          <div className="absolute top-4 right-4 z-20 bg-slate-800/95 backdrop-blur-md rounded-lg px-4 py-2 border border-slate-700">
+            <Icon icon="mdi:loading" width="20" height="20" className="text-yellow-400 animate-spin" />
+          </div>
+        )}
+
+        {/* Map Component(s) */}
+        {viewMode === "split" ? (
+          <div className="w-full h-full flex gap-2 p-2 animate-fadeIn">
+            {/* Defense Map */}
+            <div className="flex-1 relative rounded-lg overflow-hidden border-2 border-blue-600/50 transition-all duration-500 ease-in-out transform">
+              <div className="absolute top-2 left-2 right-2 z-10 bg-blue-900/90 backdrop-blur-md rounded-lg px-4 py-2 border border-blue-600 animate-slideDown">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Icon icon="mdi:shield" width="20" height="20" className="text-blue-400" />
+                    <span className="text-sm font-bold text-white">Defense Team</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <div className={`w-2 h-2 rounded-full ${isConnectedDefense ? "bg-green-400 animate-pulse" : "bg-slate-500"}`} />
+                    <span className="text-xs text-slate-300">{isConnectedDefense ? "Live" : "Offline"}</span>
+                  </div>
+                </div>
+              </div>
+              <Map
+                latitude={14.3026}
+                longitude={101.1653}
+                detections={defenseDetections}
+                onMarkerClick={(object) => setSelectedMarker({ ...object })}
+                teamColors={teamColors}
+              />
+            </div>
+
+            {/* Offense Map */}
+            <div className="flex-1 relative rounded-lg overflow-hidden border-2 border-red-600/50 transition-all duration-500 ease-in-out transform">
+              <div className="absolute top-2 left-2 right-2 z-10 bg-red-900/90 backdrop-blur-md rounded-lg px-4 py-2 border border-red-600 animate-slideDown">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Icon icon="mdi:sword" width="20" height="20" className="text-red-400" />
+                    <span className="text-sm font-bold text-white">Offense Team</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <div className={`w-2 h-2 rounded-full ${isConnectedOffense ? "bg-green-400 animate-pulse" : "bg-slate-500"}`} />
+                    <span className="text-xs text-slate-300">{isConnectedOffense ? "Live" : "Offline"}</span>
+                  </div>
+                </div>
+              </div>
+              <Map
+                latitude={14.3026}
+                longitude={101.1653}
+                detections={offenseDetections}
+                onMarkerClick={(object) => setSelectedMarker({ ...object })}
+                teamColors={teamColors}
+              />
             </div>
           </div>
-
-          {/* Quick Actions */}
-          <div className="flex items-center gap-2">
-            {(isLoadingDefense || isLoadingOffense) && (
-              <div className="bg-slate-800/95 backdrop-blur-md rounded-lg px-4 py-2 border border-slate-700">
-                <Icon icon="mdi:loading" width="20" height="20" className="text-yellow-400 animate-spin" />
-              </div>
-            )}
+        ) : (
+          <div className="w-full h-full animate-fadeIn">
+            <Map
+              latitude={14.3026}
+              longitude={101.1653}
+              detections={allDetections}
+              onMarkerClick={(object) => setSelectedMarker({ ...object })}
+              teamColors={teamColors}
+            />
           </div>
-        </div>
-
-        {/* Map Component */}
-        <div className="w-full h-full">
-          <Map
-            latitude={14.3026}
-            longitude={101.1653}
-            detections={allDetections}
-            onMarkerClick={(object) => setSelectedMarker({ ...object })}
-            teamColors={teamColors}
-          />
-        </div>
+        )}
 
         {/* Selected Object Info Card */}
         {selectedMarker && (
@@ -422,11 +474,12 @@ export default function RootPage() {
           </div>
         )}
 
-        {/* Legend */}
-        <div className="absolute top-4 right-4 z-10">
-          <div className="bg-slate-800/95 backdrop-blur-md rounded-lg shadow-lg px-4 py-3 border border-slate-700">
-            <p className="text-xs font-semibold text-slate-400 mb-2">Legend</p>
-            <div className="space-y-2">
+        {/* Legend - Only show in non-split view */}
+        {viewMode !== "split" && (
+          <div className="absolute top-4 right-4 z-10">
+            <div className="bg-slate-800/95 backdrop-blur-md rounded-lg shadow-lg px-4 py-3 border border-slate-700">
+              <p className="text-xs font-semibold text-slate-400 mb-2">Legend</p>
+              <div className="space-y-2">
               {viewMode === "all" && (
                 <>
                   <div className="flex items-center gap-2">
@@ -451,9 +504,10 @@ export default function RootPage() {
                   <span className="text-xs text-white">Offense</span>
                 </div>
               )}
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Image Modal */}
