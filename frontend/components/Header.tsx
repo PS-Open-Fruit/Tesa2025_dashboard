@@ -5,7 +5,7 @@ import { Icon } from "@iconify/react";
 import { useEffect, useState } from "react";
 
 export default function Header() {
-  const [currentTime, setCurrentTime] = useState<string>(new Date().toLocaleTimeString('th-TH'));
+  const [currentTime, setCurrentTime] = useState<string>('');
 
   useEffect(() => {
     // Update every second
@@ -78,8 +78,8 @@ export default function Header() {
           <div className="px-4 py-2 bg-slate-800 rounded-lg border border-slate-700">
             <div className="flex items-center space-x-2">
               <Icon icon="mdi:clock-outline" width="18" height="18" className="text-slate-400" />
-              <span className="text-sm font-mono text-slate-300">
-                {currentTime}
+              <span className="text-sm font-mono text-slate-300" suppressHydrationWarning>
+                {currentTime || '00:00:00'}
               </span>
             </div>
           </div>
