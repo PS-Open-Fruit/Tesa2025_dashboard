@@ -1,3 +1,16 @@
-export default function HomePage() {
-  return <h1 className="text-3xl font-bold">This is Home page</h1>;
+"use client";
+
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+
+export default function RootPage() {
+  const router = useRouter();
+
+  useEffect(() => {
+    // Redirect to integation page
+    router.replace("/integation");
+  }, [router]);
+
+  return null;
 }
+

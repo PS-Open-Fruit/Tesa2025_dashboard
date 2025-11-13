@@ -22,9 +22,9 @@ export default function RootLayout({
           </div>
 
           <nav className="flex items-center gap-2">
-            <Link href="/" className="hover:bg-gray-800 px-2 py-1 rounded flex items-center space-x-1">
-              <Icon icon="mdi:home" width="18" height="18" className="text-blue-400" />
-              <span className="text-sm">Home</span>
+            <Link href="/history" className="hover:bg-gray-800 px-2 py-1 rounded flex items-center space-x-1">
+              <Icon icon="mdi:history" width="18" height="18" className="text-blue-400" />
+              <span className="text-sm">History</span>
             </Link>
             <Link href="/defense" className="hover:bg-gray-800 px-2 py-1 rounded flex items-center space-x-1">
               <Icon icon="mdi:shield" width="18" height="18" className="text-blue-400" />
