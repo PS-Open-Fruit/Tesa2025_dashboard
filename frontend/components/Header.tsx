@@ -3,9 +3,13 @@
 import Link from "next/link";
 import { Icon } from "@iconify/react";
 import { useEffect, useState } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
 
 export default function Header() {
   const [currentTime, setCurrentTime] = useState<string>('');
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const mode = searchParams.get('mode') || 'live';
 
   useEffect(() => {
     // Update every second
@@ -33,41 +37,29 @@ export default function Header() {
         {/* Navigation */}
         <nav className="flex items-center gap-1">
           <Link 
-            href="/integation" 
-            className="group relative px-4 py-2 rounded-lg transition-all duration-200 hover:bg-slate-700/50"
+            href="/?mode=live" 
+            className={`group relative px-4 py-2 rounded-lg transition-all duration-200 ${
+              pathname === '/' && mode === 'live'
+                ? 'bg-purple-600/20 border border-purple-500/50'
+                : 'hover:bg-slate-700/50'
+            }`}
           >
             <div className="flex items-center space-x-2">
-              <Icon icon="mdi:view-dashboard" width="20" height="20" className="text-purple-400 group-hover:text-purple-300" />
-              <span className="text-sm font-medium text-slate-200 group-hover:text-white">Integration</span>
-            </div>
-          </Link>
-          
-          <Link 
-            href="/defense" 
-            className="group relative px-4 py-2 rounded-lg transition-all duration-200 hover:bg-slate-700/50"
-          >
-            <div className="flex items-center space-x-2">
-              <Icon icon="mdi:shield" width="20" height="20" className="text-blue-400 group-hover:text-blue-300" />
-              <span className="text-sm font-medium text-slate-200 group-hover:text-white">Defense</span>
+              <Icon icon="mdi:satellite-uplink" width="20" height="20" className="text-purple-400 group-hover:text-purple-300" />
+              <span className="text-sm font-medium text-slate-200 group-hover:text-white">Live View</span>
             </div>
           </Link>
 
           <Link 
-            href="/offense" 
-            className="group relative px-4 py-2 rounded-lg transition-all duration-200 hover:bg-slate-700/50"
+            href="/?mode=history" 
+            className={`group relative px-4 py-2 rounded-lg transition-all duration-200 ${
+              pathname === '/' && mode === 'history'
+                ? 'bg-purple-600/20 border border-purple-500/50'
+                : 'hover:bg-slate-700/50'
+            }`}
           >
             <div className="flex items-center space-x-2">
-              <Icon icon="mdi:sword" width="20" height="20" className="text-red-400 group-hover:text-red-300" />
-              <span className="text-sm font-medium text-slate-200 group-hover:text-white">Offense</span>
-            </div>
-          </Link>
-
-          <Link 
-            href="/history" 
-            className="group relative px-4 py-2 rounded-lg transition-all duration-200 hover:bg-slate-700/50"
-          >
-            <div className="flex items-center space-x-2">
-              <Icon icon="mdi:history" width="20" height="20" className="text-yellow-400 group-hover:text-yellow-300" />
+              <Icon icon="mdi:history" width="20" height="20" className="text-purple-400 group-hover:text-purple-300" />
               <span className="text-sm font-medium text-slate-200 group-hover:text-white">History</span>
             </div>
           </Link>
