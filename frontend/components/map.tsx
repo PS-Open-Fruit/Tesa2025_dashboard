@@ -16,11 +16,11 @@ const createDroneIcon = (color: string = "#3b82f6") => {
   el.style.display = "flex";
   el.style.alignItems = "center";
   el.style.justifyContent = "center";
-  
+
   // Render React icon component into the element
   const root = createRoot(el);
   root.render(<TbDrone size={32} color={color} />);
-  
+
   return el;
 };
 
@@ -41,7 +41,7 @@ export default function Map({ latitude = 14.3026, longitude = 101.1653, detectio
   const markersRef = useRef<mapboxgl.Marker[]>([]);
   const routeLayersRef = useRef<Set<string>>(new Set());
   const isMapInitialized = useRef(false);
-  
+
   const [mapStyle, setMapStyle] = useState<"streets" | "satellite">("streets");
   const [isStyleLoaded, setIsStyleLoaded] = useState(false);
   const [isManualMode, setIsManualMode] = useState(false);
@@ -107,11 +107,11 @@ export default function Map({ latitude = 14.3026, longitude = 101.1653, detectio
   // Change map style when toggled
   useEffect(() => {
     if (!mapRef.current) return;
-    
-    const styleUrl = mapStyle === "satellite" 
+
+    const styleUrl = mapStyle === "satellite"
       ? "mapbox://styles/mapbox/satellite-streets-v12"
       : "mapbox://styles/mapbox/streets-v11";
-    
+
     setIsStyleLoaded(false);
     mapRef.current.setStyle(styleUrl);
   }, [mapStyle]);
@@ -136,8 +136,7 @@ export default function Map({ latitude = 14.3026, longitude = 101.1653, detectio
   // Update markers and routes when detections or map style change
   useEffect(() => {
     if (!mapRef.current || !isStyleLoaded) return;
-    
-    console.log('Updating markers, detections count:', detections.length);
+
 
     // Clear all existing markers
     markersRef.current.forEach((marker) => marker.remove());
@@ -218,11 +217,10 @@ export default function Map({ latitude = 14.3026, longitude = 101.1653, detectio
 
     // Create route paths and position markers for each drone
     objectsMap.forEach(({ obj, camId }) => {
-      // Find all positions for this object from all detections
+      // Find all positions for this object from all detections (regardless of camera)
       const positions: Array<{ lng: number; lat: number; timestamp: string; imagePath: string }> = [];
-
       sortedDetections.forEach((detection) => {
-        if (detection.objects && detection.cam_id === camId) {
+        if (detection.objects) {
           const foundObj = detection.objects.find(o => o.obj_id === obj.obj_id);
           if (foundObj) {
             const lat = typeof foundObj.lat === "string" ? parseFloat(foundObj.lat) : foundObj.lat;
@@ -238,7 +236,7 @@ export default function Map({ latitude = 14.3026, longitude = 101.1653, detectio
 
       // Limit to maxPositions most recent positions
       const limitedPositions = positions.slice(0, maxPositions);
-
+      console.log(limitedPositions);
       const routeColor = getMarkerColor(camId);
 
       // Create position markers for all historical points (except the latest which already has a drone marker)
@@ -252,7 +250,7 @@ export default function Map({ latitude = 14.3026, longitude = 101.1653, detectio
         pointEl.style.borderRadius = '50%';
         pointEl.style.cursor = 'pointer';
         pointEl.style.opacity = '0.6';
-        
+
         const pointMarker = new mapboxgl.Marker({
           element: pointEl,
           anchor: 'center'
@@ -347,7 +345,7 @@ export default function Map({ latitude = 14.3026, longitude = 101.1653, detectio
 
     // Get latest position for each unique drone
     const latestPositions = new globalThis.Map<string, { lat: number; lng: number }>();
-    
+
     // Sort detections by timestamp (newest first)
     const sortedDetections = [...detections].sort((a, b) => {
       return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
@@ -391,17 +389,17 @@ export default function Map({ latitude = 14.3026, longitude = 101.1653, detectio
   return (
     <div className="relative w-full h-full">
       <div ref={mapContainer} className="w-full h-full" />
-      
+
       {/* Satellite Toggle Button */}
       <button
         onClick={() => setMapStyle(prev => prev === "streets" ? "satellite" : "streets")}
         className="absolute top-4 left-4 z-10 bg-slate-800/95 backdrop-blur-md rounded-lg px-4 py-2 border border-slate-700 hover:bg-slate-700 transition-all shadow-lg flex items-center gap-2"
         title={mapStyle === "streets" ? "Switch to Satellite" : "Switch to Streets"}
       >
-        <Icon 
-          icon={mapStyle === "streets" ? "mdi:satellite-variant" : "mdi:map"} 
-          width="20" 
-          height="20" 
+        <Icon
+          icon={mapStyle === "streets" ? "mdi:satellite-variant" : "mdi:map"}
+          width="20"
+          height="20"
           className="text-slate-300"
         />
         <span className="text-sm text-white font-medium">
@@ -416,10 +414,10 @@ export default function Map({ latitude = 14.3026, longitude = 101.1653, detectio
           className="absolute top-4 left-40 z-10 bg-purple-600/95 backdrop-blur-md rounded-lg px-4 py-2 border border-purple-500 hover:bg-purple-700 transition-all shadow-lg flex items-center gap-2 animate-slideDown"
           title="Refocus on latest drone positions and auto-follow"
         >
-          <Icon 
-            icon="mdi:target" 
-            width="20" 
-            height="20" 
+          <Icon
+            icon="mdi:target"
+            width="20"
+            height="20"
             className="text-white"
           />
           <span className="text-sm text-white font-medium">

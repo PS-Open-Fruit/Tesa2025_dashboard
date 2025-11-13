@@ -127,8 +127,7 @@ export default function OffenseConnectedPage() {
         const json = await fetchDetectionshistory(cameraInfo.id as string, cameraInfo.token as string);
 
         setDetections(json.data || []);
-        console.log("Fetched detections:",json.data);
-      } catch (err: any) {
+              } catch (err: any) {
         console.error("Fetch detections failed:", err);
         setErrorMsg("ไม่สามารถโหลดข้อมูลการตรวจจับได้");
       } finally {
@@ -159,17 +158,14 @@ export default function OffenseConnectedPage() {
 
     // เมื่อเชื่อมต่อสำเร็จ
     socket.on("connect", () => {
-      console.log("Socket.IO connected:", socket.id);
-      setSocketStatus("connected");
+            setSocketStatus("connected");
       
       // Emit subscribe_camera
       socket.emit("subscribe_camera", { cam_id: cameraInfo.id });
-      console.log("Subscribed to camera:", cameraInfo.id);
-    });
+          });
 
     socket.on('object_detection', (data : DetectionItem) => {
-      console.log('Received object detection:', data);
-      setDetections(prev => {
+            setDetections(prev => {
         // Check if detection with same id already exists to avoid duplicates
         const exists = prev.some(d => d.id === data.id);
         if (exists) {
@@ -190,8 +186,7 @@ export default function OffenseConnectedPage() {
 
     // จัดการ disconnect
     socket.on("disconnect", (reason: string) => {
-      console.log("Socket.IO disconnected:", reason);
-      setSocketStatus("disconnected");
+            setSocketStatus("disconnected");
     });
 
     // Cleanup เมื่อ component unmount
@@ -245,8 +240,7 @@ export default function OffenseConnectedPage() {
                   socketRef.current.emit("unsubscribe_camera", {
                     cam_id: cameraInfo.id,
                   });
-                  console.log("Unsubscribed from camera:", cameraInfo.id);
-                  // Disconnect socket
+                                    // Disconnect socket
                   socketRef.current.disconnect();
                 }
                 sessionStorage.removeItem("Dashboard_cameraInfo");
@@ -413,8 +407,7 @@ export default function OffenseConnectedPage() {
                   <button
                     onClick={() => {
                       // TODO: Implement send to field functionality
-                      console.log("ส่งข้อมูลถึงภาคสนาม:", selectedMarker);
-                      alert("ส่งข้อมูลถึงภาคสนามเรียบร้อย");
+                                            alert("ส่งข้อมูลถึงภาคสนามเรียบร้อย");
                     }}
                     className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md transition-colors"
                   >

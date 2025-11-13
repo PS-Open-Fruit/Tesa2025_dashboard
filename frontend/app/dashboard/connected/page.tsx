@@ -75,8 +75,7 @@ export default function ConnectedPage() {
         const json = await fetchDetectionshistory(cameraInfo.id as string, cameraInfo.token as string);
 
         setDetections(json.data || []);
-        console.log("Fetched detections:",json.data);
-      } catch (err: any) {
+              } catch (err: any) {
         console.error("Fetch detections failed:", err);
         setErrorMsg("ไม่สามารถโหลดข้อมูลการตรวจจับได้");
       } finally {
@@ -107,17 +106,14 @@ export default function ConnectedPage() {
 
     // เมื่อเชื่อมต่อสำเร็จ
     socket.on("connect", () => {
-      console.log("Socket.IO connected:", socket.id);
-      setSocketStatus("connected");
+            setSocketStatus("connected");
       
       // Emit subscribe_camera
       socket.emit("subscribe_camera", { cam_id: cameraInfo.id });
-      console.log("Subscribed to camera:", cameraInfo.id);
-    });
+          });
 
     socket.on('object_detection', (data : DetectionItem) => {
-      console.log('Received object detection:', data);
-      setDetections(prev => [...prev, data]);
+            setDetections(prev => [...prev, data]);
       // Process detection data here
     });
 
@@ -129,8 +125,7 @@ export default function ConnectedPage() {
 
     // จัดการ disconnect
     socket.on("disconnect", (reason: string) => {
-      console.log("Socket.IO disconnected:", reason);
-      setSocketStatus("disconnected");
+            setSocketStatus("disconnected");
     });
 
     // Cleanup เมื่อ component unmount
@@ -184,8 +179,7 @@ export default function ConnectedPage() {
                   socketRef.current.emit("unsubscribe_camera", {
                     cam_id: cameraInfo.id,
                   });
-                  console.log("Unsubscribed from camera:", cameraInfo.id);
-                  // Disconnect socket
+                                    // Disconnect socket
                   socketRef.current.disconnect();
                 }
                 sessionStorage.removeItem("Dashboard_cameraInfo");

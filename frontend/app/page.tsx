@@ -52,8 +52,7 @@ export default function RootPage() {
       setIsLoadingDefense(true);
       try {
         const json = await fetchDetectionshistory(defCamId, defToken);
-        console.log("Fetched defense detections:", json);
-        setDefenseDetections(json.data || []);
+                setDefenseDetections(json.data || []);
       } catch (err: any) {
         console.error("Fetch defense detections failed:", err);
       } finally {
@@ -85,28 +84,22 @@ export default function RootPage() {
 
   // Update Defense image URL when new detection arrives
   useEffect(() => {
-    console.log("Defense detections updated, count:", defenseDetections.length);
-    const latestDetection = defenseDetections[0];
+        const latestDetection = defenseDetections[0];
     if (latestDetection?.image_path ) {
       const newUrl = `https://tesa-api.crma.dev${latestDetection.image_path}?t=${latestDetection.id}`;
-      console.log("Updating defense image URL to:", newUrl);
-      setDefenseImageUrl(newUrl);
+            setDefenseImageUrl(newUrl);
     } else {
-      console.log("No image_path in latest detection:", latestDetection);
-    }
+          }
   }, [defenseDetections]);
 
   // Update Offense image URL when new detection arrives
   useEffect(() => {
-    console.log("Offense detections updated, count:", offenseDetections.length);
-    const latestDetection = offenseDetections[0];
+        const latestDetection = offenseDetections[0];
     if (latestDetection?.image_path) {
       const newUrl = `https://tesa-api.crma.dev${latestDetection.image_path}?t=${latestDetection.id}`;
-      console.log("Updating offense image URL to:", newUrl);
-      setOffenseImageUrl(newUrl);
+            setOffenseImageUrl(newUrl);
     } else {
-      console.log("No image_path in latest detection:", latestDetection);
-    }
+          }
   }, [offenseDetections]);
 
   // Combine detections based on view mode (memoized to prevent flickering)
@@ -132,19 +125,17 @@ export default function RootPage() {
     socketRefDefense.current = socket;
 
     socket.on("connect", () => {
-      console.log("Socket.IO Defense connected:", socket.id);
-      setIsConnectedDefense(true);
+            setIsConnectedDefense(true);
       socket.emit("subscribe_camera", { cam_id: defCamId });
     });
 
     socket.on("object_detection", (data: DetectionItem) => {
-      console.log("Received defense detection:", data);
-
+      
       data.image_path = data.image.path;
       setDefenseDetections(prev => {
-        const exists = prev.some(d => d.id === data.id);
+        const exists = prev.some(d => d.timestamp === data.timestamp && d.cam_id === data.cam_id);
         if (exists) {
-          return prev.map(d => d.id === data.id ? data : d);
+          return prev.map(d => (d.timestamp === data.timestamp && d.cam_id === data.cam_id) ? data : d);
         }
         return [data, ...prev];
       });
@@ -156,8 +147,7 @@ export default function RootPage() {
     });
 
     socket.on("disconnect", (reason: string) => {
-      console.log("Socket.IO Defense disconnected:", reason);
-      setIsConnectedDefense(false);
+            setIsConnectedDefense(false);
     });
 
     return () => {
@@ -181,20 +171,18 @@ export default function RootPage() {
     socketRefOffense.current = socket;
 
     socket.on("connect", () => {
-      console.log("Socket.IO Offense connected:", socket.id);
-      setIsConnectedOffense(true);
+            setIsConnectedOffense(true);
       socket.emit("subscribe_camera", { cam_id: offCamId });
     });
 
     socket.on("object_detection", (data: DetectionItem) => {
-      console.log("Received offense detection:", data);
-      
+            
       // @ts-expect-error - image property exists in runtime data
       data.image_path = data.image.path;
       setOffenseDetections(prev => {
-        const exists = prev.some(d => d.id === data.id);
+        const exists = prev.some(d => d.timestamp === data.timestamp && d.cam_id === data.cam_id);
         if (exists) {
-          return prev.map(d => d.id === data.id ? data : d);
+          return prev.map(d => (d.timestamp === data.timestamp && d.cam_id === data.cam_id) ? data : d);
         }
         return [data, ...prev];
       });
@@ -206,8 +194,7 @@ export default function RootPage() {
     });
 
     socket.on("disconnect", (reason: string) => {
-      console.log("Socket.IO Offense disconnected:", reason);
-      setIsConnectedOffense(false);
+            setIsConnectedOffense(false);
     });
 
     return () => {

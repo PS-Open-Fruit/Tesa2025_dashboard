@@ -40,8 +40,7 @@ export default function IntegationPage() {
       try {
         const json = await fetchDetectionshistory(offCamId, offToken);
         setOffenceDetection(json.data || []);
-        console.log("Fetched offence detections:", json.data);
-      } catch (err: any) {
+              } catch (err: any) {
         console.error("Fetch offence detections failed:", err);
       } finally {
         setIsLoadingLeft(false);
@@ -60,8 +59,7 @@ export default function IntegationPage() {
       try {
         const json = await fetchDetectionshistory(defCamId, defToken);
         setDefenceDetection(json.data || []);
-        console.log("Fetched defence detections:", json.data);
-      } catch (err: any) {
+              } catch (err: any) {
         console.error("Fetch defence detections failed:", err);
       } finally {
         setIsLoadingRight(false);
@@ -83,15 +81,12 @@ export default function IntegationPage() {
     socketRefLeft.current = socket;
 
     socket.on("connect", () => {
-      console.log("Socket.IO Left (Offence) connected:", socket.id);
-      setIsConnectedLeft(true);
+            setIsConnectedLeft(true);
       socket.emit("subscribe_camera", { cam_id: offCamId });
-      console.log("Subscribed to camera (Offence):", offCamId);
-    });
+          });
 
     socket.on("object_detection", (data: DetectionItem) => {
-      console.log("Received object detection (Offence):", data);
-      setOffenceDetection(prev => {
+            setOffenceDetection(prev => {
         const exists = prev.some(d => d.id === data.id);
         if (exists) {
           return prev.map(d => d.id === data.id ? data : d);
@@ -106,8 +101,7 @@ export default function IntegationPage() {
     });
 
     socket.on("disconnect", (reason: string) => {
-      console.log("Socket.IO Left (Offence) disconnected:", reason);
-      setIsConnectedLeft(false);
+            setIsConnectedLeft(false);
     });
 
     return () => {
@@ -131,15 +125,12 @@ export default function IntegationPage() {
     socketRefRight.current = socket;
 
     socket.on("connect", () => {
-      console.log("Socket.IO Right (Defence) connected:", socket.id);
-      setIsConnectedRight(true);
+            setIsConnectedRight(true);
       socket.emit("subscribe_camera", { cam_id: defCamId });
-      console.log("Subscribed to camera (Defence):", defCamId);
-    });
+          });
 
     socket.on("object_detection", (data: DetectionItem) => {
-      console.log("Received object detection (Defence):", data);
-      setDefenceDetection(prev => {
+            setDefenceDetection(prev => {
         const exists = prev.some(d => d.id === data.id);
         if (exists) {
           return prev.map(d => d.id === data.id ? data : d);
@@ -154,8 +145,7 @@ export default function IntegationPage() {
     });
 
     socket.on("disconnect", (reason: string) => {
-      console.log("Socket.IO Right (Defence) disconnected:", reason);
-      setIsConnectedRight(false);
+            setIsConnectedRight(false);
     });
 
     return () => {

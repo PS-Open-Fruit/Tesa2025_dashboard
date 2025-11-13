@@ -151,8 +151,7 @@ export default function HistoryPage() {
 
         setAllOffenceDetections(detections);
         setFilteredOffenceDetections(detections);
-        console.log("Fetched offence detections:", detections);
-      } catch (err: any) {
+              } catch (err: any) {
         console.error("Fetch offence detections failed:", err);
         setErrorMsgOffence("ไม่สามารถโหลดข้อมูลการตรวจจับ Offence ได้");
       } finally {
@@ -183,8 +182,7 @@ export default function HistoryPage() {
 
         setAllDefenceDetections(detections);
         setFilteredDefenceDetections(detections);
-        console.log("Fetched defence detections:", detections);
-      } catch (err: any) {
+              } catch (err: any) {
         console.error("Fetch defence detections failed:", err);
         setErrorMsgDefence("ไม่สามารถโหลดข้อมูลการตรวจจับ Defence ได้");
       } finally {
