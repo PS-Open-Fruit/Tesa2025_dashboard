@@ -50,7 +50,7 @@ export default function Map({ latitude, longitude, detections, onMarkerClick, on
       container: mapContainer.current,
       style: "mapbox://styles/mapbox/streets-v11",
       center: [longitude, latitude],
-      zoom: 13,
+      zoom: 12,
     });
 
     mapRef.current = map;

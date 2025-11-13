@@ -38,6 +38,55 @@ export default function OffenseConnectedPage() {
   const endIndex = startIndex + itemsPerPage;
   const currentDetections = detections.slice(startIndex, endIndex);
 
+  // ✅ ฟังก์ชันสร้าง array ของหน้า pagination
+  const getPaginationPages = () => {
+    if (totalPages <= 7) {
+      // ถ้ามีหน้าไม่เกิน 7 หน้า แสดงทั้งหมด
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+
+    const pages = new Set<number>();
+    
+    // เพิ่ม 2 หน้าแรกเสมอ
+    pages.add(1);
+    pages.add(2);
+    
+    // เพิ่มหน้าปัจจุบันและหน้าข้างๆ (ถ้าจำเป็น)
+    if (currentPage > 2 && currentPage < totalPages - 1) {
+      pages.add(currentPage - 1);
+      pages.add(currentPage);
+      pages.add(currentPage + 1);
+    } else if (currentPage === 3) {
+      pages.add(3);
+      pages.add(4);
+    } else if (currentPage === totalPages - 2) {
+      pages.add(totalPages - 3);
+      pages.add(totalPages - 2);
+    }
+    
+    // เพิ่ม 2 หน้าสุดท้ายเสมอ
+    pages.add(totalPages - 1);
+    pages.add(totalPages);
+    
+    // แปลงเป็น array และเรียงลำดับ
+    const sortedPages = Array.from(pages).sort((a, b) => a - b);
+    const result: (number | string)[] = [];
+    
+    for (let i = 0; i < sortedPages.length; i++) {
+      const page = sortedPages[i];
+      const prevPage = sortedPages[i - 1];
+      
+      // เพิ่มจุดไข่ปลาถ้ามีช่องว่างมากกว่า 1 หน้า
+      if (prevPage && page - prevPage > 1) {
+        result.push("...");
+      }
+      
+      result.push(page);
+    }
+    
+    return result;
+  };
+
   // โหลดข้อมูลกล้องจาก session
   useEffect(() => {
     const info = sessionStorage.getItem("Dashboard_cameraInfo");
@@ -252,8 +301,8 @@ export default function OffenseConnectedPage() {
             </div>
             <div className="w-full h-[600px]">
               <Map
-                latitude={cameraInfo?.latitude || 13.7563}
-                longitude={cameraInfo?.longitude || 100.5018}
+                latitude={cameraInfo?.latitude || 14.3026}
+                longitude={cameraInfo?.longitude || 101.1653}
                 detections={detections}
                 onMarkerClick={(object) => setSelectedMarker(object)}
                 onRemoveDrone={(objId) => {
@@ -460,19 +509,31 @@ export default function OffenseConnectedPage() {
                   ก่อนหน้า
                 </button>
                 <div className="flex items-center gap-1">
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                    <button
-                      key={page}
-                      onClick={() => setCurrentPage(page)}
-                      className={`px-3 py-1.5 text-sm font-medium rounded-md ${
-                        currentPage === page
-                          ? "bg-red-600 text-white"
-                          : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
-                      }`}
-                    >
-                      {page}
-                    </button>
-                  ))}
+                  {getPaginationPages().map((page, index) => {
+                    if (page === "...") {
+                      return (
+                        <span
+                          key={`ellipsis-${index}`}
+                          className="px-3 py-1.5 text-sm font-medium text-gray-500"
+                        >
+                          ...
+                        </span>
+                      );
+                    }
+                    return (
+                      <button
+                        key={page}
+                        onClick={() => setCurrentPage(page as number)}
+                        className={`px-3 py-1.5 text-sm font-medium rounded-md ${
+                          currentPage === page
+                            ? "bg-red-600 text-white"
+                            : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    );
+                  })}
                 </div>
                 <button
                   onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
