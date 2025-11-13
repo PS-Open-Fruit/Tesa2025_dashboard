@@ -199,9 +199,10 @@ export default function Map({ latitude = 14.3026, longitude = 101.1653, detectio
       // Add click event
       marker.getElement().addEventListener("click", () => {
         if (mapRef.current) {
+          const currentZoom = mapRef.current.getZoom();
           mapRef.current.flyTo({
             center: [lng, lat],
-            zoom: 16,
+            zoom: currentZoom,
             essential: true,
           });
         }
@@ -213,10 +214,10 @@ export default function Map({ latitude = 14.3026, longitude = 101.1653, detectio
       markersRef.current.push(marker);
     });
 
-    // Create route paths for each drone
+    // Create route paths and position markers for each drone
     objectsMap.forEach(({ obj, camId }) => {
       // Find all positions for this object from all detections
-      const positions: Array<{ lng: number; lat: number }> = [];
+      const positions: Array<{ lng: number; lat: number; timestamp: string }> = [];
 
       sortedDetections.forEach((detection) => {
         if (detection.objects && detection.cam_id === camId) {
@@ -225,17 +226,66 @@ export default function Map({ latitude = 14.3026, longitude = 101.1653, detectio
             const lat = typeof foundObj.lat === "string" ? parseFloat(foundObj.lat) : foundObj.lat;
             const lng = typeof foundObj.lng === "string" ? parseFloat(foundObj.lng) : foundObj.lng;
             if (!isNaN(lat) && !isNaN(lng)) {
-              positions.push({ lng, lat });
+              positions.push({ lng, lat, timestamp: detection.timestamp });
             }
           }
         }
+      });
+
+      if (positions.length === 0) return;
+
+      const routeColor = getMarkerColor(camId);
+
+      // Create position markers for all historical points (except the latest which already has a drone marker)
+      positions.slice(1).forEach((pos) => {
+        const pointEl = document.createElement('div');
+        pointEl.className = 'position-marker';
+        pointEl.style.width = '8px';
+        pointEl.style.height = '8px';
+        pointEl.style.backgroundColor = routeColor;
+        pointEl.style.border = '2px solid white';
+        pointEl.style.borderRadius = '50%';
+        pointEl.style.cursor = 'pointer';
+        pointEl.style.opacity = '0.6';
+        
+        const pointMarker = new mapboxgl.Marker({
+          element: pointEl,
+          anchor: 'center'
+        })
+          .setLngLat([pos.lng, pos.lat])
+          .addTo(mapRef.current!);
+
+        // Add click event - same behavior as drone marker
+        pointEl.addEventListener('click', () => {
+          if (mapRef.current) {
+            const currentZoom = mapRef.current.getZoom();
+            mapRef.current.flyTo({
+              center: [pos.lng, pos.lat],
+              zoom: currentZoom,
+              essential: true,
+            });
+          }
+          if (onMarkerClick) {
+            // Create a modified object with the historical position
+            const historicalObj = {
+              ...obj,
+              lat: pos.lat,
+              lng: pos.lng,
+              isLost: false,
+              isNew: false,
+              team: camId
+            };
+            onMarkerClick(historicalObj);
+          }
+        });
+
+        markersRef.current.push(pointMarker);
       });
 
       // Draw route if we have at least 2 positions
       if (positions.length >= 2) {
         const routeId = `route-${obj.obj_id}`;
         const coordinates = positions.map(pos => [pos.lng, pos.lat]);
-        const routeColor = getMarkerColor(camId);
 
         mapRef.current!.addSource(routeId, {
           type: 'geojson',
