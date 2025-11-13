@@ -13,14 +13,14 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="flex flex-col min-h-screen bg-slate-900 text-slate-100" suppressHydrationWarning>
+      <body className="flex flex-col h-screen bg-slate-900 text-slate-100 overflow-hidden" suppressHydrationWarning>
         <Header />
 
         {/* Main content */}
-        <main className="flex-1 p-4 bg-slate-900">{children}</main>
+        <main className="flex-1 overflow-auto bg-slate-900">{children}</main>
 
         {/* Footer */}
-        <footer className="w-full bg-slate-800 border-t border-slate-700 py-3 px-6">
+        <footer className="w-full bg-slate-800 border-t border-slate-700 py-2 px-6 flex-shrink-0">
           <div className="flex items-center justify-between text-xs text-slate-400">
             <p>© 2025 OpenFruit Team - TESA Top Gun Rally</p>
             <div className="flex items-center space-x-4">

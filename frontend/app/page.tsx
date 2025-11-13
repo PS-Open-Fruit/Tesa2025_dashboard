@@ -200,7 +200,7 @@ export default function RootPage() {
   };
 
   return (
-    <div className="w-full h-[calc(100vh-10rem)] flex gap-4">
+    <div className="w-full h-full flex gap-4 p-4">
       {/* Left Sidebar - Stats & Controls */}
       <div className={`flex flex-col gap-4 transition-all duration-300 ${showStats ? 'w-80' : 'w-16'}`}>
         {/* Toggle Stats Button */}
