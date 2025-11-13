@@ -22,7 +22,7 @@ export default function RootPage() {
   const [defenseDetections, setDefenseDetections] = useState<DetectionItem[]>([]);
   const [allDetections, setAllDetections] = useState<DetectionItem[]>([]);
   
-  const [selectedMarker, setSelectedMarker] = useState<(DetectionObject & { isLost?: boolean; isNew?: boolean; team?: string }) | null>(null);
+  const [selectedMarker, setSelectedMarker] = useState<(DetectionObject & { isLost?: boolean; isNew?: boolean; team?: string; timestamp?: string }) | null>(null);
   const [selectedImage, setSelectedImage] = useState<{ url: string; timestamp: string; info: any } | null>(null);
   
   const [viewMode, setViewMode] = useState<"all" | "offense" | "defense" | "split">("all");
@@ -455,8 +455,32 @@ export default function RootPage() {
               <div className="grid grid-cols-4 gap-4">
                 <div className="bg-slate-900/50 rounded-lg p-3">
                   <p className="text-xs text-slate-400 mb-1">Type</p>
-                  <p className="text-sm font-semibold text-white">{selectedMarker.type || "Unknown"}</p>
+                  <p className="text-sm font-semibold text-white capitalize">{selectedMarker.type || "Unknown"}</p>
                 </div>
+                <div className="bg-slate-900/50 rounded-lg p-3">
+                  <p className="text-xs text-slate-400 mb-1">Objective</p>
+                  <p className="text-sm font-semibold text-white capitalize">{selectedMarker.objective || "N/A"}</p>
+                </div>
+                <div className="bg-slate-900/50 rounded-lg p-3">
+                  <p className="text-xs text-slate-400 mb-1">Size</p>
+                  <p className="text-sm font-semibold text-white capitalize">{selectedMarker.size || "N/A"}</p>
+                </div>
+                <div className="bg-slate-900/50 rounded-lg p-3">
+                  <p className="text-xs text-slate-400 mb-1">Status</p>
+                  {(() => {
+                    if (!selectedMarker.timestamp) return <p className="text-sm font-semibold text-slate-400">Unknown</p>;
+                    const timeDiff = Date.now() - new Date(selectedMarker.timestamp).getTime();
+                    const isActive = timeDiff < 60000; // 1 minutes
+                    return (
+                      <p className={`text-sm font-semibold ${isActive ? 'text-green-400' : 'text-slate-400'}`}>
+                        {isActive ? 'Active' : 'Inactive'}
+                      </p>
+                    );
+                  })()}
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4 mt-4">
                 <div className="bg-slate-900/50 rounded-lg p-3">
                   <p className="text-xs text-slate-400 mb-1">Latitude</p>
                   <p className="text-sm font-mono text-white">{selectedMarker.lat}</p>
@@ -464,10 +488,6 @@ export default function RootPage() {
                 <div className="bg-slate-900/50 rounded-lg p-3">
                   <p className="text-xs text-slate-400 mb-1">Longitude</p>
                   <p className="text-sm font-mono text-white">{selectedMarker.lng}</p>
-                </div>
-                <div className="bg-slate-900/50 rounded-lg p-3">
-                  <p className="text-xs text-slate-400 mb-1">Status</p>
-                  <p className="text-sm font-semibold text-green-400">Active</p>
                 </div>
               </div>
             </div>

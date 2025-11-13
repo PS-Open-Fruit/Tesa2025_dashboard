@@ -28,7 +28,7 @@ interface MapProps {
   latitude?: number;
   longitude?: number;
   detections?: DetectionItem[];
-  onMarkerClick?: (object: DetectionObject & { isLost?: boolean; isNew?: boolean; team?: string }) => void;
+  onMarkerClick?: (object: DetectionObject & { isLost?: boolean; isNew?: boolean; team?: string; timestamp?: string }) => void;
   onRemoveDrone?: (objId: string) => void;
   teamColors?: { [camId: string]: string }; // Map camera IDs to colors
   onRecenterChange?: (isManual: boolean) => void; // Callback when manual mode changes
@@ -178,7 +178,7 @@ export default function Map({ latitude = 14.3026, longitude = 101.1653, detectio
     });
 
     // Create markers for all unique objects
-    objectsMap.forEach(({ obj, camId }) => {
+    objectsMap.forEach(({ obj, camId, timestamp }) => {
       const lat = typeof obj.lat === "string" ? parseFloat(obj.lat) : obj.lat;
       const lng = typeof obj.lng === "string" ? parseFloat(obj.lng) : obj.lng;
 
@@ -207,7 +207,7 @@ export default function Map({ latitude = 14.3026, longitude = 101.1653, detectio
           });
         }
         if (onMarkerClick) {
-          onMarkerClick({ ...obj, isLost: false, isNew: false, team: camId });
+          onMarkerClick({ ...obj, isLost: false, isNew: false, team: camId, timestamp });
         }
       });
 
@@ -273,7 +273,8 @@ export default function Map({ latitude = 14.3026, longitude = 101.1653, detectio
               lng: pos.lng,
               isLost: false,
               isNew: false,
-              team: camId
+              team: camId,
+              timestamp: pos.timestamp
             };
             onMarkerClick(historicalObj);
           }
