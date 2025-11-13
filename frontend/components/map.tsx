@@ -41,6 +41,7 @@ export default function Map({ latitude = 14.3026, longitude = 101.1653, detectio
   const isMapInitialized = useRef(false);
   
   const [mapStyle, setMapStyle] = useState<"streets" | "satellite">("streets");
+  const [isStyleLoaded, setIsStyleLoaded] = useState(false);
 
   // Get color for a detection based on camera ID
   const getMarkerColor = useCallback((camId: string) => {
@@ -60,6 +61,10 @@ export default function Map({ latitude = 14.3026, longitude = 101.1653, detectio
       style: "mapbox://styles/mapbox/streets-v11",
       center: [longitude ?? 101.1653, latitude ?? 14.3026],
       zoom: 12,
+    });
+
+    map.on('load', () => {
+      setIsStyleLoaded(true);
     });
 
     mapRef.current = map;
@@ -85,12 +90,32 @@ export default function Map({ latitude = 14.3026, longitude = 101.1653, detectio
       ? "mapbox://styles/mapbox/satellite-streets-v12"
       : "mapbox://styles/mapbox/streets-v11";
     
+    setIsStyleLoaded(false);
     mapRef.current.setStyle(styleUrl);
   }, [mapStyle]);
 
-  // Update markers when detections change
+  // Listen for style load events
   useEffect(() => {
-    if (!mapRef.current || !mapRef.current.loaded()) return;
+    if (!mapRef.current) return;
+
+    const handleStyleLoad = () => {
+      setIsStyleLoaded(true);
+    };
+
+    mapRef.current.on('style.load', handleStyleLoad);
+
+    return () => {
+      if (mapRef.current) {
+        mapRef.current.off('style.load', handleStyleLoad);
+      }
+    };
+  }, []);
+
+  // Update markers and routes when detections or map style change
+  useEffect(() => {
+    if (!mapRef.current || !isStyleLoaded) return;
+    
+    console.log('Updating markers, detections count:', detections.length);
 
     // Clear all existing markers
     markersRef.current.forEach((marker) => marker.remove());
@@ -171,7 +196,7 @@ export default function Map({ latitude = 14.3026, longitude = 101.1653, detectio
     objectsMap.forEach(({ obj, camId }) => {
       // Find all positions for this object from all detections
       const positions: Array<{ lng: number; lat: number }> = [];
-      
+
       sortedDetections.forEach((detection) => {
         if (detection.objects && detection.cam_id === camId) {
           const foundObj = detection.objects.find(o => o.obj_id === obj.obj_id);
@@ -236,7 +261,7 @@ export default function Map({ latitude = 14.3026, longitude = 101.1653, detectio
         duration: 1000
       });
     }
-  }, [detections, getMarkerColor, onMarkerClick]);
+  }, [detections, getMarkerColor, onMarkerClick, isStyleLoaded]);
 
   return (
     <div className="relative w-full h-full">
