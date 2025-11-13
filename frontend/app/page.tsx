@@ -458,18 +458,6 @@ export default function RootPage() {
           <div className="w-full h-full flex gap-2 p-2 animate-fadeIn">
             {/* Defense Map */}
             <div className="flex-1 relative rounded-lg overflow-hidden border-2 border-blue-600/50 transition-all duration-500 ease-in-out transform">
-              <div className="absolute top-2 left-2 right-2 z-10 bg-blue-900/90 backdrop-blur-md rounded-lg px-4 py-2 border border-blue-600 animate-slideDown">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Icon icon="mdi:shield" width="20" height="20" className="text-blue-400" />
-                    <span className="text-sm font-bold text-white">Defense Team</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <div className={`w-2 h-2 rounded-full ${isConnectedDefense ? "bg-green-400 animate-pulse" : "bg-slate-500"}`} />
-                    <span className="text-xs text-slate-300">{isConnectedDefense ? "Live" : "Offline"}</span>
-                  </div>
-                </div>
-              </div        >
               <Map
                 latitude={14.3026}
                 longitude={101.1653}
@@ -482,18 +470,6 @@ export default function RootPage() {
 
             {/* Offense Map */}
             <div className="flex-1 relative rounded-lg overflow-hidden border-2 border-red-600/50 transition-all duration-500 ease-in-out transform">
-              <div className="absolute top-2 left-2 right-2 z-10 bg-red-900/90 backdrop-blur-md rounded-lg px-4 py-2 border border-red-600 animate-slideDown">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Icon icon="mdi:sword" width="20" height="20" className="text-red-400" />
-                    <span className="text-sm font-bold text-white">Offense Team</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <div className={`w-2 h-2 rounded-full ${isConnectedOffense ? "bg-green-400 animate-pulse" : "bg-slate-500"}`} />
-                    <span className="text-xs text-slate-300">{isConnectedOffense ? "Live" : "Offline"}</span>
-                  </div>
-                </div>
-              </div>
               <Map
                 latitude={14.3026}
                 longitude={101.1653}
