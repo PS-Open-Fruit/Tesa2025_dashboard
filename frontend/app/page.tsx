@@ -771,7 +771,7 @@ export default function RootPage() {
                     </div>
                   </div>
                   
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-3 gap-4">
                     <div className="bg-slate-900/50 rounded-lg p-3">
                       <p className="text-xs text-slate-400 mb-1">Latitude</p>
                       <p className="text-sm font-mono text-white">{selectedMarker.lat}</p>
@@ -780,7 +780,34 @@ export default function RootPage() {
                       <p className="text-xs text-slate-400 mb-1">Longitude</p>
                       <p className="text-sm font-mono text-white">{selectedMarker.lng}</p>
                     </div>
+                    <div className="bg-slate-900/50 rounded-lg p-3">
+                      <p className="text-xs text-slate-400 mb-1">Altitude</p>
+                      <p className="text-sm font-mono text-white">{selectedMarker.details?.alt ? `${selectedMarker.details.alt.toFixed(2)}m` : "N/A"}</p>
+                    </div>
                   </div>
+
+                  {selectedMarker.details?.details && (selectedMarker.details.details.color || selectedMarker.details.details.speed !== undefined) && (
+                    <div className="grid grid-cols-2 gap-4">
+                      {selectedMarker.details.details.color && (
+                        <div className="bg-slate-900/50 rounded-lg p-3">
+                          <p className="text-xs text-slate-400 mb-1">Color</p>
+                          <div className="flex items-center gap-2">
+                            <div 
+                              className="w-4 h-4 rounded-full border border-slate-600" 
+                              style={{ backgroundColor: selectedMarker.details.details.color }}
+                            />
+                            <p className="text-sm font-semibold text-white capitalize">{selectedMarker.details.details.color}</p>
+                          </div>
+                        </div>
+                      )}
+                      {selectedMarker.details.details.speed !== undefined && (
+                        <div className="bg-slate-900/50 rounded-lg p-3">
+                          <p className="text-xs text-slate-400 mb-1">Speed</p>
+                          <p className="text-sm font-semibold text-white">{selectedMarker.details.details.speed} m/s</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

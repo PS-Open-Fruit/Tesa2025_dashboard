@@ -31,7 +31,13 @@ export type DetectionObject = {
   lng: string | number;
   objective?: string | null;
   size?: string | null;
-  details?: any | null;
+  details?: {
+    alt?: number;
+    details?: {
+      color?: string;
+      speed?: number;
+    };
+  } | null;
 };
 
 export type CameraDetail = {
