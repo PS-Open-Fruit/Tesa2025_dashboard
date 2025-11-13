@@ -202,25 +202,73 @@ export default function RootPage() {
   return (
     <div className="w-full h-full flex gap-4 p-4">
       {/* Left Sidebar - Stats & Controls */}
-      <div className={`flex flex-col gap-4 transition-all duration-300 ${showStats ? 'w-80' : 'w-16'}`}>
+      <div className={`flex flex-col gap-4 transition-all duration-300 ${showStats ? 'w-80' : 'w-16'} overflow-y-auto`}>
         {/* Toggle Stats Button */}
         <button
           onClick={() => setShowStats(!showStats)}
-          className="bg-slate-800 border border-slate-700 rounded-xl p-3 hover:bg-slate-700 transition-colors"
+          className="bg-gradient-to-r from-purple-600 to-purple-500 border border-purple-400 rounded-xl p-3 hover:from-purple-700 hover:to-purple-600 transition-all shadow-lg hover:shadow-purple-500/50 flex-shrink-0"
           title={showStats ? "Hide Stats" : "Show Stats"}
         >
           <Icon 
             icon={showStats ? "mdi:chevron-left" : "mdi:chevron-right"} 
             width="24" 
             height="24" 
-            className="text-slate-400 mx-auto"
+            className="text-white mx-auto"
           />
         </button>
 
         {showStats && (
           <>
+            {/* View Mode Selector - MOVED TO TOP */}
+            <div className="bg-slate-800 border border-slate-700 rounded-xl shadow-xl p-4 flex-shrink-0">
+              <div className="flex items-center gap-2 mb-3">
+                <Icon icon="mdi:view-dashboard" width="20" height="20" className="text-purple-400" />
+                <p className="text-sm text-white font-bold">View Mode</p>
+              </div>
+              <div className="space-y-2">
+                <button
+                  onClick={() => setViewMode("all")}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all font-medium ${
+                    viewMode === "all" 
+                      ? "bg-gradient-to-r from-purple-600 to-purple-500 text-white shadow-lg shadow-purple-500/50 scale-105" 
+                      : "bg-slate-700 text-slate-300 hover:bg-slate-600 hover:scale-102"
+                  }`}
+                >
+                  <Icon icon="mdi:eye" width="20" height="20" />
+                  <span className="text-sm">All Teams</span>
+                  {viewMode === "all" && <Icon icon="mdi:check-circle" width="18" height="18" className="ml-auto" />}
+                </button>
+                <button
+                  onClick={() => setViewMode("defense")}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all font-medium ${
+                    viewMode === "defense" 
+                      ? "bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg shadow-blue-500/50 scale-105" 
+                      : "bg-slate-700 text-slate-300 hover:bg-slate-600 hover:scale-102"
+                  }`}
+                >
+                  <Icon icon="mdi:shield" width="20" height="20" />
+                  <span className="text-sm">Defense Only</span>
+                  {viewMode === "defense" && <Icon icon="mdi:check-circle" width="18" height="18" className="ml-auto" />}
+                </button>
+                <button
+                  onClick={() => setViewMode("offense")}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all font-medium ${
+                    viewMode === "offense" 
+                      ? "bg-gradient-to-r from-red-600 to-red-500 text-white shadow-lg shadow-red-500/50 scale-105" 
+                      : "bg-slate-700 text-slate-300 hover:bg-slate-600 hover:scale-102"
+                  }`}
+                >
+                  <Icon icon="mdi:sword" width="20" height="20" />
+                  <span className="text-sm">Offense Only</span>
+                  {viewMode === "offense" && <Icon icon="mdi:check-circle" width="18" height="18" className="ml-auto" />}
+                </button>
+              </div>
+            </div>
+
             {/* Overall Stats */}
-            <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700 rounded-xl shadow-xl p-5">
+            <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700 rounded-xl shadow-xl p-5 flex-shrink-0 hover:border-purple-600/70 transition-all cursor-pointer"
+                 onClick={() => setViewMode("all")}
+                 title="Click to view all data">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg flex items-center justify-center">
                   <Icon icon="mdi:monitor-dashboard" width="24" height="24" className="text-white" />
@@ -244,7 +292,9 @@ export default function RootPage() {
             </div>
 
             {/* Defense Stats */}
-            <div className="bg-gradient-to-br from-blue-900/30 to-slate-800 border border-blue-700/50 rounded-xl shadow-xl p-5">
+            <div className="bg-gradient-to-br from-blue-900/30 to-slate-800 border border-blue-700/50 rounded-xl shadow-xl p-5 hover:border-blue-600/70 transition-all cursor-pointer"
+                 onClick={() => setViewMode("defense")}
+                 title="Click to focus on Defense">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <Icon icon="mdi:shield" width="20" height="20" className="text-blue-400" />
@@ -269,7 +319,9 @@ export default function RootPage() {
             </div>
 
             {/* Offense Stats */}
-            <div className="bg-gradient-to-br from-red-900/30 to-slate-800 border border-red-700/50 rounded-xl shadow-xl p-5">
+            <div className="bg-gradient-to-br from-red-900/30 to-slate-800 border border-red-700/50 rounded-xl shadow-xl p-5 hover:border-red-600/70 transition-all cursor-pointer"
+                 onClick={() => setViewMode("offense")}
+                 title="Click to focus on Offense">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <Icon icon="mdi:sword" width="20" height="20" className="text-red-400" />
@@ -290,46 +342,6 @@ export default function RootPage() {
                   <span className="text-xs text-slate-400">Active</span>
                   <span className="text-lg font-bold text-green-400">{stats.activeOffense}</span>
                 </div>
-              </div>
-            </div>
-
-            {/* View Mode Selector */}
-            <div className="bg-slate-800 border border-slate-700 rounded-xl shadow-xl p-4">
-              <p className="text-xs text-slate-400 mb-3 font-semibold">View Mode</p>
-              <div className="space-y-2">
-                <button
-                  onClick={() => setViewMode("all")}
-                  className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg transition-all ${
-                    viewMode === "all" 
-                      ? "bg-purple-600 text-white shadow-lg" 
-                      : "bg-slate-700 text-slate-300 hover:bg-slate-600"
-                  }`}
-                >
-                  <Icon icon="mdi:eye" width="18" height="18" />
-                  <span className="text-sm font-medium">All Teams</span>
-                </button>
-                <button
-                  onClick={() => setViewMode("defense")}
-                  className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg transition-all ${
-                    viewMode === "defense" 
-                      ? "bg-blue-600 text-white shadow-lg" 
-                      : "bg-slate-700 text-slate-300 hover:bg-slate-600"
-                  }`}
-                >
-                  <Icon icon="mdi:shield" width="18" height="18" />
-                  <span className="text-sm font-medium">Defense Only</span>
-                </button>
-                <button
-                  onClick={() => setViewMode("offense")}
-                  className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg transition-all ${
-                    viewMode === "offense" 
-                      ? "bg-red-600 text-white shadow-lg" 
-                      : "bg-slate-700 text-slate-300 hover:bg-slate-600"
-                  }`}
-                >
-                  <Icon icon="mdi:sword" width="18" height="18" />
-                  <span className="text-sm font-medium">Offense Only</span>
-                </button>
               </div>
             </div>
           </>
@@ -423,13 +435,25 @@ export default function RootPage() {
           <div className="bg-slate-800/95 backdrop-blur-md rounded-lg shadow-lg px-4 py-3 border border-slate-700">
             <p className="text-xs font-semibold text-slate-400 mb-2">Legend</p>
             <div className="space-y-2">
-              {(viewMode === "all" || viewMode === "defense") && (
+              {viewMode === "all" && (
+                <>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                    <span className="text-xs text-white">Defense</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                    <span className="text-xs text-white">Offense</span>
+                  </div>
+                </>
+              )}
+              {viewMode === "defense" && (
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
                   <span className="text-xs text-white">Defense</span>
                 </div>
               )}
-              {(viewMode === "all" || viewMode === "offense") && (
+              {viewMode === "offense" && (
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 bg-red-500 rounded-full"></div>
                   <span className="text-xs text-white">Offense</span>

@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import { createRoot } from "react-dom/client";
 import mapboxgl from "mapbox-gl";
 import { TbDrone } from "react-icons/tb";
@@ -24,32 +24,32 @@ const createDroneIcon = (color: string = "#3b82f6") => {
 };
 
 interface MapProps {
-  latitude: number;
-  longitude: number;
-  detections: DetectionItem[];
+  latitude?: number;
+  longitude?: number;
+  detections?: DetectionItem[];
   onMarkerClick?: (object: DetectionObject & { isLost?: boolean; isNew?: boolean; team?: string }) => void;
   onRemoveDrone?: (objId: string) => void;
   teamColors?: { [camId: string]: string }; // Map camera IDs to colors
 }
 
-export default function Map({ latitude, longitude, detections, onMarkerClick, onRemoveDrone, teamColors }: MapProps) {
+export default function Map({ latitude = 14.3026, longitude = 101.1653, detections = [], onMarkerClick, onRemoveDrone, teamColors }: MapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<mapboxgl.Marker[]>([]);
-  const routesRef = useRef<{ [objId: string]: any }>({});
+  const routesRef = useRef<{ [objId: string]: { sourceId: string; layerId: string } }>({});
   const previousObjectsRef = useRef<Set<string>>(new Set());
   const isMapInitialized = useRef(false);
   const onMarkerClickRef = useRef(onMarkerClick);
   const onRemoveDroneRef = useRef(onRemoveDrone);
 
   // Get color for a detection based on camera ID
-  const getMarkerColor = (detection: DetectionItem, isLost: boolean = false) => {
+  const getMarkerColor = useCallback((detection: DetectionItem, isLost: boolean = false) => {
     if (isLost) return "#ef4444"; // Red for lost
     if (teamColors && detection.cam_id && teamColors[detection.cam_id]) {
       return teamColors[detection.cam_id];
     }
     return "#3b82f6"; // Default blue
-  };
+  }, [teamColors]);
 
   // Initialize map only once
   useEffect(() => {
@@ -59,7 +59,7 @@ export default function Map({ latitude, longitude, detections, onMarkerClick, on
     const map = new mapboxgl.Map({
       container: mapContainer.current,
       style: "mapbox://styles/mapbox/streets-v11",
-      center: [longitude, latitude],
+      center: [longitude ?? 101.1653, latitude ?? 14.3026],
       zoom: 12,
     });
 
@@ -73,7 +73,7 @@ export default function Map({ latitude, longitude, detections, onMarkerClick, on
       mapRef.current = null;
       isMapInitialized.current = false;
     };
-  }, []); // Only run once on mount
+  }, [latitude, longitude]); // Add dependencies
 
   // Keep callbacks ref up to date
   useEffect(() => {
@@ -139,8 +139,23 @@ export default function Map({ latitude, longitude, detections, onMarkerClick, on
         id => !previousObjectsRef.current.has(id)
       );
 
+      // Group objects by obj_id to get the latest position from each camera
+      const objectsByObjId = new globalThis.Map<string, { detection: DetectionItem; obj: DetectionObject }>();
+      
+      // Process all recent detections to get latest position for each unique object
+      for (let i = sortedDetections.length - 1; i >= 0; i--) {
+        const detection = sortedDetections[i];
+        if (detection.objects) {
+          detection.objects.forEach(obj => {
+            if (obj.obj_id && !objectsByObjId.has(obj.obj_id)) {
+              objectsByObjId.set(obj.obj_id, { detection, obj });
+            }
+          });
+        }
+      }
+
       // Create markers for current objects
-      latestDetection.objects.forEach((obj) => {
+      objectsByObjId.forEach(({ detection, obj }: { detection: DetectionItem; obj: DetectionObject }) => {
         const lat = typeof obj.lat === "string" ? parseFloat(obj.lat) : obj.lat;
         const lng = typeof obj.lng === "string" ? parseFloat(obj.lng) : obj.lng;
 
@@ -148,8 +163,8 @@ export default function Map({ latitude, longitude, detections, onMarkerClick, on
           const isNew = newObjects.includes(obj.obj_id);
           const isLost = false; // Current objects are not lost
           
-          // Get color based on camera ID (team)
-          const markerColor = getMarkerColor(latestDetection, isLost);
+          // Get color based on camera ID (team) - use the detection's cam_id, not latestDetection
+          const markerColor = getMarkerColor(detection, isLost);
           
           // Create marker with appropriate color
           const droneIcon = createDroneIcon(markerColor);
@@ -172,7 +187,7 @@ export default function Map({ latitude, longitude, detections, onMarkerClick, on
               });
             }
             if (onMarkerClickRef.current) {
-              onMarkerClickRef.current({ ...obj, isLost, isNew, team: latestDetection.cam_id });
+              onMarkerClickRef.current({ ...obj, isLost, isNew, team: detection.cam_id });
             }
           });
           
@@ -323,7 +338,7 @@ export default function Map({ latitude, longitude, detections, onMarkerClick, on
     } else {
       mapRef.current.once("load", createMarkers);
     }
-  }, [detections]);
+  }, [detections, getMarkerColor]);
 
   return <div ref={mapContainer} className="w-full h-full" />;
 }
