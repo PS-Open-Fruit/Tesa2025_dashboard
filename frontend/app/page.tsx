@@ -22,7 +22,7 @@ export default function RootPage() {
   const [defenseDetections, setDefenseDetections] = useState<DetectionItem[]>([]);
   const [allDetections, setAllDetections] = useState<DetectionItem[]>([]);
   
-  const [selectedMarker, setSelectedMarker] = useState<(DetectionObject & { isLost?: boolean; isNew?: boolean; team?: string; timestamp?: string }) | null>(null);
+  const [selectedMarker, setSelectedMarker] = useState<(DetectionObject & { isLost?: boolean; isNew?: boolean; team?: string; timestamp?: string; image_path?: string }) | null>(null);
   const [selectedImage, setSelectedImage] = useState<{ url: string; timestamp: string; info: any } | null>(null);
   
   const [viewMode, setViewMode] = useState<"all" | "offense" | "defense" | "split">("all");
@@ -456,7 +456,7 @@ export default function RootPage() {
         {/* Selected Object Info Card */}
         {selectedMarker && (
           <div className="absolute bottom-4 left-4 right-4 z-10 animate-slideIn">
-            <div className="bg-slate-800/95 backdrop-blur-lg border border-slate-700 rounded-xl shadow-2xl p-5 max-w-2xl mx-auto">
+            <div className="bg-slate-800/95 backdrop-blur-lg border border-slate-700 rounded-xl shadow-2xl p-5 max-w-4xl mx-auto">
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg flex items-center justify-center">
@@ -475,42 +475,65 @@ export default function RootPage() {
                 </button>
               </div>
 
-              <div className="grid grid-cols-4 gap-4">
-                <div className="bg-slate-900/50 rounded-lg p-3">
-                  <p className="text-xs text-slate-400 mb-1">Type</p>
-                  <p className="text-sm font-semibold text-white capitalize">{selectedMarker.type || "Unknown"}</p>
-                </div>
-                <div className="bg-slate-900/50 rounded-lg p-3">
-                  <p className="text-xs text-slate-400 mb-1">Objective</p>
-                  <p className="text-sm font-semibold text-white capitalize">{selectedMarker.objective || "N/A"}</p>
-                </div>
-                <div className="bg-slate-900/50 rounded-lg p-3">
-                  <p className="text-xs text-slate-400 mb-1">Size</p>
-                  <p className="text-sm font-semibold text-white capitalize">{selectedMarker.size || "N/A"}</p>
-                </div>
-                <div className="bg-slate-900/50 rounded-lg p-3">
-                  <p className="text-xs text-slate-400 mb-1">Status</p>
-                  {(() => {
-                    if (!selectedMarker.timestamp) return <p className="text-sm font-semibold text-slate-400">Unknown</p>;
-                    const timeDiff = Date.now() - new Date(selectedMarker.timestamp).getTime();
-                    const isActive = timeDiff < 60000; // 1 minutes
-                    return (
-                      <p className={`text-sm font-semibold ${isActive ? 'text-green-400' : 'text-slate-400'}`}>
-                        {isActive ? 'Active' : 'Inactive'}
-                      </p>
-                    );
-                  })()}
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4 mt-4">
-                <div className="bg-slate-900/50 rounded-lg p-3">
-                  <p className="text-xs text-slate-400 mb-1">Latitude</p>
-                  <p className="text-sm font-mono text-white">{selectedMarker.lat}</p>
-                </div>
-                <div className="bg-slate-900/50 rounded-lg p-3">
-                  <p className="text-xs text-slate-400 mb-1">Longitude</p>
-                  <p className="text-sm font-mono text-white">{selectedMarker.lng}</p>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {/* Detection Image */}
+                {selectedMarker.image_path && (
+                  <div className="bg-slate-900/50 rounded-lg p-3 overflow-hidden">
+                    <p className="text-xs text-slate-400 mb-2">Real-time Feed</p>
+                    <img 
+                      src={`https://tesa-api.crma.dev${selectedMarker.image_path}`} 
+                      alt={`Detection ${selectedMarker.obj_id}`}
+                      className="w-full h-auto rounded-lg border border-slate-600"
+                      onError={(e) => {
+                        e.currentTarget.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300"><rect fill="%23334155" width="400" height="300"/><text x="50%" y="50%" fill="%2394a3b8" text-anchor="middle" dy=".3em">Image not available</text></svg>';
+                      }}
+                    />
+                  </div>
+                )}
+
+                {/* Detection Details */}
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-slate-900/50 rounded-lg p-3">
+                      <p className="text-xs text-slate-400 mb-1">Type</p>
+                      <p className="text-sm font-semibold text-white capitalize">{selectedMarker.type || "Unknown"}</p>
+                    </div>
+                    <div className="bg-slate-900/50 rounded-lg p-3">
+                      <p className="text-xs text-slate-400 mb-1">Objective</p>
+                      <p className="text-sm font-semibold text-white capitalize">{selectedMarker.objective || "N/A"}</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-slate-900/50 rounded-lg p-3">
+                      <p className="text-xs text-slate-400 mb-1">Size</p>
+                      <p className="text-sm font-semibold text-white capitalize">{selectedMarker.size || "N/A"}</p>
+                    </div>
+                    <div className="bg-slate-900/50 rounded-lg p-3">
+                      <p className="text-xs text-slate-400 mb-1">Status</p>
+                      {(() => {
+                        if (!selectedMarker.timestamp) return <p className="text-sm font-semibold text-slate-400">Unknown</p>;
+                        const timeDiff = Date.now() - new Date(selectedMarker.timestamp).getTime();
+                        const isActive = timeDiff < 60000; // 1 minutes
+                        return (
+                          <p className={`text-sm font-semibold ${isActive ? 'text-green-400' : 'text-slate-400'}`}>
+                            {isActive ? 'Active' : 'Inactive'}
+                          </p>
+                        );
+                      })()}
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-slate-900/50 rounded-lg p-3">
+                      <p className="text-xs text-slate-400 mb-1">Latitude</p>
+                      <p className="text-sm font-mono text-white">{selectedMarker.lat}</p>
+                    </div>
+                    <div className="bg-slate-900/50 rounded-lg p-3">
+                      <p className="text-xs text-slate-400 mb-1">Longitude</p>
+                      <p className="text-sm font-mono text-white">{selectedMarker.lng}</p>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

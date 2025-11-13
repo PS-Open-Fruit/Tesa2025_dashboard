@@ -28,7 +28,7 @@ interface MapProps {
   latitude?: number;
   longitude?: number;
   detections?: DetectionItem[];
-  onMarkerClick?: (object: DetectionObject & { isLost?: boolean; isNew?: boolean; team?: string; timestamp?: string }) => void;
+  onMarkerClick?: (object: DetectionObject & { isLost?: boolean; isNew?: boolean; team?: string; timestamp?: string; image_path?: string }) => void;
   onRemoveDrone?: (objId: string) => void;
   teamColors?: { [camId: string]: string }; // Map camera IDs to colors
   onRecenterChange?: (isManual: boolean) => void; // Callback when manual mode changes
@@ -171,7 +171,8 @@ export default function Map({ latitude = 14.3026, longitude = 101.1653, detectio
             objectsMap.set(obj.obj_id, {
               obj,
               camId: detection.cam_id,
-              timestamp: detection.timestamp
+              timestamp: detection.timestamp,
+              imagePath: detection.image_path
             });
           }
         });
@@ -179,7 +180,7 @@ export default function Map({ latitude = 14.3026, longitude = 101.1653, detectio
     });
 
     // Create markers for all unique objects
-    objectsMap.forEach(({ obj, camId, timestamp }) => {
+    objectsMap.forEach(({ obj, camId, timestamp, imagePath }) => {
       const lat = typeof obj.lat === "string" ? parseFloat(obj.lat) : obj.lat;
       const lng = typeof obj.lng === "string" ? parseFloat(obj.lng) : obj.lng;
 
@@ -208,7 +209,7 @@ export default function Map({ latitude = 14.3026, longitude = 101.1653, detectio
           });
         }
         if (onMarkerClick) {
-          onMarkerClick({ ...obj, isLost: false, isNew: false, team: camId, timestamp });
+          onMarkerClick({ ...obj, isLost: false, isNew: false, team: camId, timestamp, image_path: imagePath });
         }
       });
 
@@ -218,7 +219,7 @@ export default function Map({ latitude = 14.3026, longitude = 101.1653, detectio
     // Create route paths and position markers for each drone
     objectsMap.forEach(({ obj, camId }) => {
       // Find all positions for this object from all detections
-      const positions: Array<{ lng: number; lat: number; timestamp: string }> = [];
+      const positions: Array<{ lng: number; lat: number; timestamp: string; imagePath: string }> = [];
 
       sortedDetections.forEach((detection) => {
         if (detection.objects && detection.cam_id === camId) {
@@ -227,7 +228,7 @@ export default function Map({ latitude = 14.3026, longitude = 101.1653, detectio
             const lat = typeof foundObj.lat === "string" ? parseFloat(foundObj.lat) : foundObj.lat;
             const lng = typeof foundObj.lng === "string" ? parseFloat(foundObj.lng) : foundObj.lng;
             if (!isNaN(lat) && !isNaN(lng)) {
-              positions.push({ lng, lat, timestamp: detection.timestamp });
+              positions.push({ lng, lat, timestamp: detection.timestamp, imagePath: detection.image_path });
             }
           }
         }
@@ -278,7 +279,8 @@ export default function Map({ latitude = 14.3026, longitude = 101.1653, detectio
               isLost: false,
               isNew: false,
               team: camId,
-              timestamp: pos.timestamp
+              timestamp: pos.timestamp,
+              image_path: pos.imagePath
             };
             onMarkerClick(historicalObj);
           }
