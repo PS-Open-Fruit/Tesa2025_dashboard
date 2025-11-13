@@ -279,50 +279,7 @@ export default function RootPage() {
                   })()}
                 </div>
 
-                {/* Offense Feed */}
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Icon icon="mdi:sword" width="16" height="16" className="text-red-400" />
-                    <p className="text-xs text-red-400 font-semibold">Offense</p>
-                  </div>
-                  {(() => {
-                    const latestDetection = offenseDetections[0];
-                    
-                    if (!offenseImageUrl) {
-                      return (
-                        <div className="bg-slate-900/50 rounded-lg p-6 text-center">
-                          <Icon icon="mdi:camera-off" width="32" height="32" className="text-slate-600 mx-auto mb-1" />
-                          <p className="text-xs text-slate-500">No feed</p>
-                        </div>
-                      );
-                    }
-                    
-                    return (
-                      <div className="space-y-2">
-                        <img 
-                          key={offenseImageUrl}
-                          src={offenseImageUrl} 
-                          alt="Offense camera feed"
-                          className="w-full h-auto rounded-lg border border-red-600/50 cursor-pointer hover:border-red-500 transition-colors"
-                          onClick={() => setShowCameraFeed(showCameraFeed === "offense" ? null : "offense")}
-                          onError={(e) => {
-                            e.currentTarget.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300"><rect fill="%23334155" width="400" height="300"/><text x="50%" y="50%" fill="%2394a3b8" text-anchor="middle" dy=".3em">Feed unavailable</text></svg>';
-                          }}
-                        />
-                        {latestDetection && (
-                          <div className="flex items-center justify-between text-xs">
-                            <span className="text-slate-400">
-                              {latestDetection.objects?.length || 0} drone(s)
-                            </span>
-                            <span className="text-slate-500">
-                              {new Date(latestDetection.timestamp).toLocaleTimeString()}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })()}
-                </div>
+
               </div>
             </div>
 
@@ -512,7 +469,7 @@ export default function RootPage() {
                     <span className="text-xs text-slate-300">{isConnectedDefense ? "Live" : "Offline"}</span>
                   </div>
                 </div>
-              </div>
+              </div        >
               <Map
                 latitude={14.3026}
                 longitude={101.1653}
