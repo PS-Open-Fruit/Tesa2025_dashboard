@@ -2,7 +2,7 @@
 
 import "mapbox-gl/dist/mapbox-gl.css";
 import dynamic from "next/dynamic";
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useMemo } from "react";
 import { io } from "socket.io-client";
 import { fetchDetectionshistory } from "@/app/api";
 import type { DetectionItem, DetectionObject } from "@/app/type";
@@ -20,15 +20,15 @@ export default function RootPage() {
   
   const [offenseDetections, setOffenseDetections] = useState<DetectionItem[]>([]);
   const [defenseDetections, setDefenseDetections] = useState<DetectionItem[]>([]);
-  const [allDetections, setAllDetections] = useState<DetectionItem[]>([]);
   
   const [selectedMarker, setSelectedMarker] = useState<(DetectionObject & { isLost?: boolean; isNew?: boolean; team?: string; timestamp?: string; image_path?: string }) | null>(null);
   const [selectedImage, setSelectedImage] = useState<{ url: string; timestamp: string; info: any } | null>(null);
   const [showCameraFeed, setShowCameraFeed] = useState<"defense" | "offense" | null>(null);
   
   const [viewMode, setViewMode] = useState<"all" | "offense" | "defense" | "split">("all");
-  const [showStats, setShowStats] = useState(true);
   const [maxPositions, setMaxPositions] = useState(10);
+  const [defenseImageUrl, setDefenseImageUrl] = useState<string>("");
+  const [offenseImageUrl, setOffenseImageUrl] = useState<string>("");
   
   const [isLoadingDefense, setIsLoadingDefense] = useState(false);
   const [isLoadingOffense, setIsLoadingOffense] = useState(false);
@@ -52,6 +52,7 @@ export default function RootPage() {
       setIsLoadingDefense(true);
       try {
         const json = await fetchDetectionshistory(defCamId, defToken);
+        console.log("Fetched defense detections:", json);
         setDefenseDetections(json.data || []);
       } catch (err: any) {
         console.error("Fetch defense detections failed:", err);
@@ -82,14 +83,40 @@ export default function RootPage() {
     fetchDetections();
   }, [offCamId, offToken]);
 
-  // Combine detections based on view mode
+  // Update Defense image URL when new detection arrives
   useEffect(() => {
-    if (viewMode === "all") {
-      setAllDetections([...defenseDetections, ...offenseDetections]);
-    } else if (viewMode === "defense") {
-      setAllDetections(defenseDetections);
+    console.log("Defense detections updated, count:", defenseDetections.length);
+    const latestDetection = defenseDetections[0];
+    if (latestDetection?.image_path ) {
+      const newUrl = `https://tesa-api.crma.dev${latestDetection.image_path}?t=${latestDetection.id}`;
+      console.log("Updating defense image URL to:", newUrl);
+      setDefenseImageUrl(newUrl);
     } else {
-      setAllDetections(offenseDetections);
+      console.log("No image_path in latest detection:", latestDetection);
+    }
+  }, [defenseDetections]);
+
+  // Update Offense image URL when new detection arrives
+  useEffect(() => {
+    console.log("Offense detections updated, count:", offenseDetections.length);
+    const latestDetection = offenseDetections[0];
+    if (latestDetection?.image_path) {
+      const newUrl = `https://tesa-api.crma.dev${latestDetection.image_path}?t=${latestDetection.id}`;
+      console.log("Updating offense image URL to:", newUrl);
+      setOffenseImageUrl(newUrl);
+    } else {
+      console.log("No image_path in latest detection:", latestDetection);
+    }
+  }, [offenseDetections]);
+
+  // Combine detections based on view mode (memoized to prevent flickering)
+  const allDetections = useMemo(() => {
+    if (viewMode === "all") {
+      return [...defenseDetections, ...offenseDetections];
+    } else if (viewMode === "defense") {
+      return defenseDetections;
+    } else {
+      return offenseDetections;
     }
   }, [viewMode, defenseDetections, offenseDetections]);
 
@@ -112,6 +139,8 @@ export default function RootPage() {
 
     socket.on("object_detection", (data: DetectionItem) => {
       console.log("Received defense detection:", data);
+
+      data.image_path = data.image.path;
       setDefenseDetections(prev => {
         const exists = prev.some(d => d.id === data.id);
         if (exists) {
@@ -159,6 +188,9 @@ export default function RootPage() {
 
     socket.on("object_detection", (data: DetectionItem) => {
       console.log("Received offense detection:", data);
+      
+      // @ts-expect-error - image property exists in runtime data
+      data.image_path = data.image.path;
       setOffenseDetections(prev => {
         const exists = prev.some(d => d.id === data.id);
         if (exists) {
@@ -204,24 +236,8 @@ export default function RootPage() {
   return (
     <div className="w-full h-full flex gap-4 p-4">
       {/* Left Sidebar - Stats & Controls */}
-      <div className={`flex flex-col gap-4 transition-all duration-300 ${showStats ? 'w-80' : 'w-16'} overflow-y-auto`}>
-        {/* Toggle Stats Button */}
-        <button
-          onClick={() => setShowStats(!showStats)}
-          className="bg-gradient-to-r from-purple-600 to-purple-500 border border-purple-400 rounded-xl p-3 hover:from-purple-700 hover:to-purple-600 transition-all shadow-lg hover:shadow-purple-500/50 flex-shrink-0"
-          title={showStats ? "Hide Stats" : "Show Stats"}
-        >
-          <Icon 
-            icon={showStats ? "mdi:chevron-left" : "mdi:chevron-right"} 
-            width="24" 
-            height="24" 
-            className="text-white mx-auto"
-          />
-        </button>
-
-        {showStats && (
-          <>
-            {/* Camera Feed Display - MOVED TO TOP */}
+      <div className="w-80 flex flex-col gap-4 overflow-y-auto">
+        {/* Camera Feed Display */}
             <div className="bg-slate-800 border border-slate-700 rounded-xl shadow-xl p-4">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
@@ -240,7 +256,7 @@ export default function RootPage() {
                   {(() => {
                     const latestDetection = defenseDetections[0];
                     
-                    if (!latestDetection || !latestDetection.image_path) {
+                    if (!defenseImageUrl) {
                       return (
                         <div className="bg-slate-900/50 rounded-lg p-6 text-center">
                           <Icon icon="mdi:camera-off" width="32" height="32" className="text-slate-600 mx-auto mb-1" />
@@ -252,7 +268,8 @@ export default function RootPage() {
                     return (
                       <div className="space-y-2">
                         <img 
-                          src={`https://tesa-api.crma.dev${latestDetection.image_path}`} 
+                          key={defenseImageUrl}
+                          src={defenseImageUrl} 
                           alt="Defense camera feed"
                           className="w-full h-auto rounded-lg border border-blue-600/50 cursor-pointer hover:border-blue-500 transition-colors"
                           onClick={() => setShowCameraFeed(showCameraFeed === "defense" ? null : "defense")}
@@ -260,14 +277,16 @@ export default function RootPage() {
                             e.currentTarget.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300"><rect fill="%23334155" width="400" height="300"/><text x="50%" y="50%" fill="%2394a3b8" text-anchor="middle" dy=".3em">Feed unavailable</text></svg>';
                           }}
                         />
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="text-slate-400">
-                            {latestDetection.objects?.length || 0} drone(s)
-                          </span>
-                          <span className="text-slate-500">
-                            {new Date(latestDetection.timestamp).toLocaleTimeString()}
-                          </span>
-                        </div>
+                        {latestDetection && (
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-slate-400">
+                              {latestDetection.objects?.length || 0} drone(s)
+                            </span>
+                            <span className="text-slate-500">
+                              {new Date(latestDetection.timestamp).toLocaleTimeString()}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     );
                   })()}
@@ -282,7 +301,7 @@ export default function RootPage() {
                   {(() => {
                     const latestDetection = offenseDetections[0];
                     
-                    if (!latestDetection || !latestDetection.image_path) {
+                    if (!offenseImageUrl) {
                       return (
                         <div className="bg-slate-900/50 rounded-lg p-6 text-center">
                           <Icon icon="mdi:camera-off" width="32" height="32" className="text-slate-600 mx-auto mb-1" />
@@ -294,7 +313,8 @@ export default function RootPage() {
                     return (
                       <div className="space-y-2">
                         <img 
-                          src={`https://tesa-api.crma.dev${latestDetection.image_path}`} 
+                          key={offenseImageUrl}
+                          src={offenseImageUrl} 
                           alt="Offense camera feed"
                           className="w-full h-auto rounded-lg border border-red-600/50 cursor-pointer hover:border-red-500 transition-colors"
                           onClick={() => setShowCameraFeed(showCameraFeed === "offense" ? null : "offense")}
@@ -302,14 +322,16 @@ export default function RootPage() {
                             e.currentTarget.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300"><rect fill="%23334155" width="400" height="300"/><text x="50%" y="50%" fill="%2394a3b8" text-anchor="middle" dy=".3em">Feed unavailable</text></svg>';
                           }}
                         />
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="text-slate-400">
-                            {latestDetection.objects?.length || 0} drone(s)
-                          </span>
-                          <span className="text-slate-500">
-                            {new Date(latestDetection.timestamp).toLocaleTimeString()}
-                          </span>
-                        </div>
+                        {latestDetection && (
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-slate-400">
+                              {latestDetection.objects?.length || 0} drone(s)
+                            </span>
+                            <span className="text-slate-500">
+                              {new Date(latestDetection.timestamp).toLocaleTimeString()}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     );
                   })()}
@@ -375,10 +397,8 @@ export default function RootPage() {
               </div>
             </div>
 
-            {/* Overall Stats */}
-            <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700 rounded-xl shadow-xl p-5 flex-shrink-0 hover:border-purple-600/70 transition-all cursor-pointer"
-                 onClick={() => setViewMode("all")}
-                 title="Click to view all data">
+            {/* Overview Stats */}
+            <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700 rounded-xl shadow-xl p-5 hover:border-purple-600/70 transition-all">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg flex items-center justify-center">
                   <Icon icon="mdi:monitor-dashboard" width="24" height="24" className="text-white" />
@@ -390,14 +410,74 @@ export default function RootPage() {
               </div>
               
               <div className="space-y-3">
+                {/* Total Detections */}
                 <div className="bg-slate-900/50 rounded-lg p-3">
-                  <p className="text-xs text-slate-400 mb-1">Total Detections</p>
-                  <p className="text-2xl font-bold text-white">{stats.totalDefense + stats.totalOffense}</p>
+                  <p className="text-xs text-slate-400 mb-2">Total Detections</p>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Icon icon="mdi:shield" width="14" height="14" className="text-blue-400" />
+                      <span className="text-sm text-slate-300">Defense:</span>
+                      <span className="text-lg font-bold text-blue-400">{stats.totalDefense}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <div className={`w-2 h-2 rounded-full ${isConnectedDefense ? "bg-green-400 animate-pulse" : "bg-slate-500"}`} />
+                      <span className="text-xs text-slate-500">{isConnectedDefense ? "Live" : "Off"}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between mt-2">
+                    <div className="flex items-center gap-2">
+                      <Icon icon="mdi:sword" width="14" height="14" className="text-red-400" />
+                      <span className="text-sm text-slate-300">Offense:</span>
+                      <span className="text-lg font-bold text-red-400">{stats.totalOffense}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <div className={`w-2 h-2 rounded-full ${isConnectedOffense ? "bg-green-400 animate-pulse" : "bg-slate-500"}`} />
+                      <span className="text-xs text-slate-500">{isConnectedOffense ? "Live" : "Off"}</span>
+                    </div>
+                  </div>
                 </div>
+
+                {/* Active Detections */}
                 <div className="bg-slate-900/50 rounded-lg p-3">
-                  <p className="text-xs text-slate-400 mb-1">Active (5 min)</p>
-                  <p className="text-2xl font-bold text-green-400">{stats.activeDefense + stats.activeOffense}</p>
+                  <p className="text-xs text-slate-400 mb-2">Active (Last 5 min)</p>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Icon icon="mdi:shield" width="14" height="14" className="text-blue-400" />
+                      <span className="text-sm text-slate-300">Defense:</span>
+                      <span className="text-lg font-bold text-green-400">{stats.activeDefense}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between mt-2">
+                    <div className="flex items-center gap-2">
+                      <Icon icon="mdi:sword" width="14" height="14" className="text-red-400" />
+                      <span className="text-sm text-slate-300">Offense:</span>
+                      <span className="text-lg font-bold text-green-400">{stats.activeOffense}</span>
+                    </div>
+                  </div>
                 </div>
+
+                {/* Unique Drones Detected */}
+                <div className="bg-slate-900/50 rounded-lg p-3">
+                  <p className="text-xs text-slate-400 mb-1">Unique Drones</p>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Icon icon="mdi:quadcopter" width="16" height="16" className="text-purple-400" />
+                      <span className="text-2xl font-bold text-white">
+                        {(() => {
+                          const allObjectIds = new Set();
+                          [...defenseDetections, ...offenseDetections].forEach(d => {
+                            d.objects?.forEach(obj => {
+                              if (obj.obj_id) allObjectIds.add(obj.obj_id);
+                            });
+                          });
+                          return allObjectIds.size;
+                        })()}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Trail Length */}
                 <div className="bg-slate-900/50 rounded-lg p-3">
                   <div className="flex items-center justify-between mb-2">
                     <p className="text-xs text-slate-400">Trail Length</p>
@@ -410,7 +490,6 @@ export default function RootPage() {
                     value={maxPositions}
                     onChange={(e) => setMaxPositions(Number(e.target.value))}
                     className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-purple-500"
-                    onClick={(e) => e.stopPropagation()}
                   />
                   <div className="flex justify-between text-xs text-slate-500 mt-1">
                     <span>1</span>
@@ -419,62 +498,6 @@ export default function RootPage() {
                 </div>
               </div>
             </div>
-
-            {/* Defense Stats */}
-            <div className="bg-gradient-to-br from-blue-900/30 to-slate-800 border border-blue-700/50 rounded-xl shadow-xl p-5 hover:border-blue-600/70 transition-all cursor-pointer"
-                 onClick={() => setViewMode("defense")}
-                 title="Click to focus on Defense">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <Icon icon="mdi:shield" width="20" height="20" className="text-blue-400" />
-                  <h3 className="text-sm font-bold text-white">Defense</h3>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <div className={`w-2 h-2 rounded-full ${isConnectedDefense ? "bg-green-400 animate-pulse" : "bg-slate-500"}`} />
-                  <span className="text-xs text-slate-400">{isConnectedDefense ? "Live" : "Offline"}</span>
-                </div>
-              </div>
-              
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-xs text-slate-400">Total</span>
-                  <span className="text-lg font-bold text-blue-400">{stats.totalDefense}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-xs text-slate-400">Active</span>
-                  <span className="text-lg font-bold text-green-400">{stats.activeDefense}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Offense Stats */}
-            <div className="bg-gradient-to-br from-red-900/30 to-slate-800 border border-red-700/50 rounded-xl shadow-xl p-5 hover:border-red-600/70 transition-all cursor-pointer"
-                 onClick={() => setViewMode("offense")}
-                 title="Click to focus on Offense">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <Icon icon="mdi:sword" width="20" height="20" className="text-red-400" />
-                  <h3 className="text-sm font-bold text-white">Offense</h3>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <div className={`w-2 h-2 rounded-full ${isConnectedOffense ? "bg-green-400 animate-pulse" : "bg-slate-500"}`} />
-                  <span className="text-xs text-slate-400">{isConnectedOffense ? "Live" : "Offline"}</span>
-                </div>
-              </div>
-              
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-xs text-slate-400">Total</span>
-                  <span className="text-lg font-bold text-red-400">{stats.totalOffense}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-xs text-slate-400">Active</span>
-                  <span className="text-lg font-bold text-green-400">{stats.activeOffense}</span>
-                </div>
-              </div>
-            </div>
-          </>
-        )}
       </div>
 
       {/* Main Map Area */}
