@@ -63,6 +63,20 @@ export default function Header() {
               <span className="text-sm font-medium text-slate-200 group-hover:text-white">History</span>
             </div>
           </Link>
+
+          <Link 
+            href="/drone-summary" 
+            className={`group relative px-4 py-2 rounded-lg transition-all duration-200 ${
+              pathname === '/drone-summary'
+                ? 'bg-purple-600/20 border border-purple-500/50'
+                : 'hover:bg-slate-700/50'
+            }`}
+          >
+            <div className="flex items-center space-x-2">
+              <Icon icon="mdi:view-dashboard" width="20" height="20" className="text-purple-400 group-hover:text-purple-300" />
+              <span className="text-sm font-medium text-slate-200 group-hover:text-white">Summary</span>
+            </div>
+          </Link>
         </nav>
 
         {/* Real-time Clock */}

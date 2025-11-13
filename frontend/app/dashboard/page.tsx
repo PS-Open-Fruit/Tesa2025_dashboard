@@ -7,8 +7,8 @@ export default function DashboardPage() {
   const router = useRouter();
 
   useEffect(() => {
-    // Redirect to defense page
-    router.replace("/defense");
+    // Redirect to drone summary page
+    router.replace("/drone-summary");
   }, [router]);
 
   return null;

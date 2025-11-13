@@ -9,6 +9,7 @@ import { fetchDetectionshistory } from "@/app/api";
 import type { DetectionItem, DetectionObject } from "@/app/type";
 import { Icon } from "@iconify/react";
 import ImageModal from "@/components/ImageModal";
+import Link from "next/link";
 
 const Map = dynamic(() => import("@/components/map"), { ssr: false });
 
