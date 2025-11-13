@@ -237,18 +237,102 @@ export default function RootPage() {
   };
 
   // Calculate statistics
-  const stats = {
-    totalDefense: defenseDetections.length,
-    totalOffense: offenseDetections.length,
-    activeDefense: defenseDetections.filter(d => {
+  const stats = useMemo(() => {
+    const now = Date.now();
+    
+    // Time-based active detections
+    const activeDefense = defenseDetections.filter(d => {
       const time = new Date(d.timestamp).getTime();
-      return Date.now() - time < 300000; // Last 5 minutes
-    }).length,
-    activeOffense: offenseDetections.filter(d => {
+      return now - time < 300000; // Last 5 minutes
+    });
+    
+    const activeOffense = offenseDetections.filter(d => {
       const time = new Date(d.timestamp).getTime();
-      return Date.now() - time < 300000;
-    }).length,
-  };
+      return now - time < 300000;
+    });
+
+    // Unique drones tracking with team separation
+    const defenseUniqueIds = new Set<string>();
+    const offenseUniqueIds = new Set<string>();
+    const allUniqueIds = new Set<string>();
+    
+    defenseDetections.forEach(d => {
+      d.objects?.forEach(obj => {
+        if (obj.obj_id) {
+          defenseUniqueIds.add(obj.obj_id);
+          allUniqueIds.add(obj.obj_id);
+        }
+      });
+    });
+    
+    offenseDetections.forEach(d => {
+      d.objects?.forEach(obj => {
+        if (obj.obj_id) {
+          offenseUniqueIds.add(obj.obj_id);
+          allUniqueIds.add(obj.obj_id);
+        }
+      });
+    });
+
+    // Calculate total objects detected
+    const totalDefenseObjects = defenseDetections.reduce((sum, d) => sum + (d.objects?.length || 0), 0);
+    const totalOffenseObjects = offenseDetections.reduce((sum, d) => sum + (d.objects?.length || 0), 0);
+
+    // Detection rate (detections per hour)
+    const getDetectionRate = (detections: DetectionItem[]) => {
+      if (detections.length === 0) return 0;
+      const timestamps = detections.map(d => new Date(d.timestamp).getTime());
+      const earliest = Math.min(...timestamps);
+      const latest = Math.max(...timestamps);
+      const hours = (latest - earliest) / (1000 * 60 * 60);
+      return hours > 0 ? Math.round(detections.length / hours) : 0;
+    };
+
+    // Average objects per detection
+    const avgDefenseObjects = defenseDetections.length > 0 
+      ? (totalDefenseObjects / defenseDetections.length).toFixed(1)
+      : '0.0';
+    
+    const avgOffenseObjects = offenseDetections.length > 0 
+      ? (totalOffenseObjects / offenseDetections.length).toFixed(1)
+      : '0.0';
+
+    // Most recent detection time
+    const latestDefenseTime = defenseDetections.length > 0 
+      ? new Date(defenseDetections[0].timestamp).getTime()
+      : 0;
+    
+    const latestOffenseTime = offenseDetections.length > 0 
+      ? new Date(offenseDetections[0].timestamp).getTime()
+      : 0;
+
+    // Time since last detection
+    const timeSinceDefense = latestDefenseTime > 0 
+      ? Math.floor((now - latestDefenseTime) / 1000)
+      : null;
+    
+    const timeSinceOffense = latestOffenseTime > 0 
+      ? Math.floor((now - latestOffenseTime) / 1000)
+      : null;
+
+    return {
+      totalDefense: defenseDetections.length,
+      totalOffense: offenseDetections.length,
+      activeDefense: activeDefense.length,
+      activeOffense: activeOffense.length,
+      uniqueDefenseDrones: defenseUniqueIds.size,
+      uniqueOffenseDrones: offenseUniqueIds.size,
+      totalUniqueDrones: allUniqueIds.size,
+      totalDefenseObjects,
+      totalOffenseObjects,
+      avgDefenseObjects,
+      avgOffenseObjects,
+      defenseDetectionRate: getDetectionRate(defenseDetections),
+      offenseDetectionRate: getDetectionRate(offenseDetections),
+      timeSinceDefense,
+      timeSinceOffense,
+    };
+  }, [defenseDetections, offenseDetections]);
 
   return (
     <div className="w-full h-full flex flex-col gap-4 p-4">
@@ -472,26 +556,97 @@ export default function RootPage() {
                 </div>
               )}
 
-              {/* Unique Drones Detected */}
+              {/* Drones Count by Team */}
               <div className="bg-slate-900/50 rounded-lg p-3">
-                <p className="text-xs text-slate-400 mb-1">Unique Drones</p>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Icon icon="mdi:quadcopter" width="16" height="16" className="text-purple-400" />
-                    <span className="text-2xl font-bold text-white">
-                      {(() => {
-                        const allObjectIds = new Set();
-                        [...defenseDetections, ...offenseDetections].forEach(d => {
-                          d.objects?.forEach(obj => {
-                            if (obj.obj_id) allObjectIds.add(obj.obj_id);
-                          });
-                        });
-                        return allObjectIds.size;
-                      })()}
-                    </span>
+                <p className="text-xs text-slate-400 mb-2">Drones by Team</p>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Icon icon="mdi:shield" width="16" height="16" className="text-blue-400" />
+                      <span className="text-sm text-slate-300">Defense:</span>
+                    </div>
+                    <span className="text-xl font-bold text-blue-400">{stats.uniqueDefenseDrones}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Icon icon="mdi:sword" width="16" height="16" className="text-red-400" />
+                      <span className="text-sm text-slate-300">Offense:</span>
+                    </div>
+                    <span className="text-xl font-bold text-red-400">{stats.uniqueOffenseDrones}</span>
+                  </div>
+                  <div className="pt-2 border-t border-slate-700/50">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Icon icon="mdi:quadcopter" width="16" height="16" className="text-purple-400" />
+                        <span className="text-sm text-slate-300">Total:</span>
+                      </div>
+                      <span className="text-xl font-bold text-purple-400">{stats.totalUniqueDrones}</span>
+                    </div>
                   </div>
                 </div>
               </div>
+
+              {/* Detection Rate */}
+              {pageMode === "history" && (
+                <div className="bg-slate-900/50 rounded-lg p-3">
+                  <p className="text-xs text-slate-400 mb-2">Detection Rate</p>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <Icon icon="mdi:shield" width="12" height="12" className="text-blue-400" />
+                        <span className="text-xs text-slate-400">Defense:</span>
+                      </div>
+                      <span className="text-sm font-bold text-blue-400">{stats.defenseDetectionRate}/hr</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <Icon icon="mdi:sword" width="12" height="12" className="text-red-400" />
+                        <span className="text-xs text-slate-400">Offense:</span>
+                      </div>
+                      <span className="text-sm font-bold text-red-400">{stats.offenseDetectionRate}/hr</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Time Since Last Detection - Only in Live Mode */}
+              {pageMode === "live" && (
+                <div className="bg-slate-900/50 rounded-lg p-3">
+                  <p className="text-xs text-slate-400 mb-2">Last Detection</p>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <Icon icon="mdi:shield" width="12" height="12" className="text-blue-400" />
+                        <span className="text-xs text-slate-400">Defense:</span>
+                      </div>
+                      <span className="text-xs font-semibold text-blue-400">
+                        {stats.timeSinceDefense !== null
+                          ? stats.timeSinceDefense < 60
+                            ? `${stats.timeSinceDefense}s ago`
+                            : stats.timeSinceDefense < 3600
+                            ? `${Math.floor(stats.timeSinceDefense / 60)}m ago`
+                            : `${Math.floor(stats.timeSinceDefense / 3600)}h ago`
+                          : 'N/A'}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <Icon icon="mdi:sword" width="12" height="12" className="text-red-400" />
+                        <span className="text-xs text-slate-400">Offense:</span>
+                      </div>
+                      <span className="text-xs font-semibold text-red-400">
+                        {stats.timeSinceOffense !== null
+                          ? stats.timeSinceOffense < 60
+                            ? `${stats.timeSinceOffense}s ago`
+                            : stats.timeSinceOffense < 3600
+                            ? `${Math.floor(stats.timeSinceOffense / 60)}m ago`
+                            : `${Math.floor(stats.timeSinceOffense / 3600)}h ago`
+                          : 'N/A'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Trail Length */}
               <div className="bg-slate-900/50 rounded-lg p-3">
