@@ -14,7 +14,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="flex flex-col min-h-screen bg-gray-100 text-gray-900">
+      <body className="flex flex-col min-h-screen bg-gray-100 text-gray-900" suppressHydrationWarning>
         {/* Header (moved from left sidebar) */}
         <header className="w-full bg-gray-900 text-white flex items-center justify-between px-4 py-2">
           <div className="flex items-center space-x-3">
