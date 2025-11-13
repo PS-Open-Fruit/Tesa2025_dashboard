@@ -27,6 +27,7 @@ export default function RootPage() {
   
   const [viewMode, setViewMode] = useState<"all" | "offense" | "defense" | "split">("all");
   const [showStats, setShowStats] = useState(true);
+  const [maxPositions, setMaxPositions] = useState(10);
   
   const [isLoadingDefense, setIsLoadingDefense] = useState(false);
   const [isLoadingOffense, setIsLoadingOffense] = useState(false);
@@ -300,6 +301,25 @@ export default function RootPage() {
                   <p className="text-xs text-slate-400 mb-1">Active (5 min)</p>
                   <p className="text-2xl font-bold text-green-400">{stats.activeDefense + stats.activeOffense}</p>
                 </div>
+                <div className="bg-slate-900/50 rounded-lg p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-xs text-slate-400">Trail Length</p>
+                    <p className="text-xs font-semibold text-purple-400">{maxPositions}</p>
+                  </div>
+                  <input
+                    type="range"
+                    min="1"
+                    max="50"
+                    value={maxPositions}
+                    onChange={(e) => setMaxPositions(Number(e.target.value))}
+                    className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-purple-500"
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                  <div className="flex justify-between text-xs text-slate-500 mt-1">
+                    <span>1</span>
+                    <span>50</span>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -392,6 +412,7 @@ export default function RootPage() {
                 detections={defenseDetections}
                 onMarkerClick={(object) => setSelectedMarker({ ...object })}
                 teamColors={teamColors}
+                maxPositions={maxPositions}
               />
             </div>
 
@@ -415,6 +436,7 @@ export default function RootPage() {
                 detections={offenseDetections}
                 onMarkerClick={(object) => setSelectedMarker({ ...object })}
                 teamColors={teamColors}
+                maxPositions={maxPositions}
               />
             </div>
           </div>
@@ -426,6 +448,7 @@ export default function RootPage() {
               detections={allDetections}
               onMarkerClick={(object) => setSelectedMarker({ ...object })}
               teamColors={teamColors}
+              maxPositions={maxPositions}
             />
           </div>
         )}

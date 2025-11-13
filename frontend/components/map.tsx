@@ -32,9 +32,10 @@ interface MapProps {
   onRemoveDrone?: (objId: string) => void;
   teamColors?: { [camId: string]: string }; // Map camera IDs to colors
   onRecenterChange?: (isManual: boolean) => void; // Callback when manual mode changes
+  maxPositions?: number; // Maximum number of position markers to show per drone
 }
 
-export default function Map({ latitude = 14.3026, longitude = 101.1653, detections = [], onMarkerClick, teamColors, onRecenterChange }: MapProps) {
+export default function Map({ latitude = 14.3026, longitude = 101.1653, detections = [], onMarkerClick, teamColors, onRecenterChange, maxPositions = 10 }: MapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<mapboxgl.Marker[]>([]);
@@ -234,10 +235,13 @@ export default function Map({ latitude = 14.3026, longitude = 101.1653, detectio
 
       if (positions.length === 0) return;
 
+      // Limit to maxPositions most recent positions
+      const limitedPositions = positions.slice(0, maxPositions);
+
       const routeColor = getMarkerColor(camId);
 
       // Create position markers for all historical points (except the latest which already has a drone marker)
-      positions.slice(1).forEach((pos) => {
+      limitedPositions.slice(1).forEach((pos) => {
         const pointEl = document.createElement('div');
         pointEl.className = 'position-marker';
         pointEl.style.width = '8px';
@@ -284,9 +288,9 @@ export default function Map({ latitude = 14.3026, longitude = 101.1653, detectio
       });
 
       // Draw route if we have at least 2 positions
-      if (positions.length >= 2) {
+      if (limitedPositions.length >= 2) {
         const routeId = `route-${obj.obj_id}`;
-        const coordinates = positions.map(pos => [pos.lng, pos.lat]);
+        const coordinates = limitedPositions.map(pos => [pos.lng, pos.lat]);
 
         mapRef.current!.addSource(routeId, {
           type: 'geojson',
@@ -333,7 +337,7 @@ export default function Map({ latitude = 14.3026, longitude = 101.1653, detectio
         duration: 1000
       });
     }
-  }, [detections, getMarkerColor, onMarkerClick, isStyleLoaded, isManualMode]);
+  }, [detections, getMarkerColor, onMarkerClick, isStyleLoaded, isManualMode, maxPositions]);
 
   // Function to refocus on latest drone positions and return to auto mode
   const handleRecenter = useCallback(() => {
