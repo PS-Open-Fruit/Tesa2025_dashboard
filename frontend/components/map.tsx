@@ -32,21 +32,16 @@ interface MapProps {
   teamColors?: { [camId: string]: string }; // Map camera IDs to colors
 }
 
-export default function Map({ latitude = 14.3026, longitude = 101.1653, detections = [], onMarkerClick, onRemoveDrone, teamColors }: MapProps) {
+export default function Map({ latitude = 14.3026, longitude = 101.1653, detections = [], onMarkerClick, teamColors }: MapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<mapboxgl.Marker[]>([]);
-  const routesRef = useRef<{ [objId: string]: { sourceId: string; layerId: string } }>({});
-  const previousObjectsRef = useRef<Set<string>>(new Set());
   const isMapInitialized = useRef(false);
-  const onMarkerClickRef = useRef(onMarkerClick);
-  const onRemoveDroneRef = useRef(onRemoveDrone);
 
   // Get color for a detection based on camera ID
-  const getMarkerColor = useCallback((detection: DetectionItem, isLost: boolean = false) => {
-    if (isLost) return "#ef4444"; // Red for lost
-    if (teamColors && detection.cam_id && teamColors[detection.cam_id]) {
-      return teamColors[detection.cam_id];
+  const getMarkerColor = useCallback((camId: string) => {
+    if (teamColors && camId && teamColors[camId]) {
+      return teamColors[camId];
     }
     return "#3b82f6"; // Default blue
   }, [teamColors]);
@@ -69,276 +64,98 @@ export default function Map({ latitude = 14.3026, longitude = 101.1653, detectio
     return () => {
       // Cleanup all markers
       markersRef.current.forEach((marker) => marker.remove());
-      map.remove();
+      if (map) {
+        map.remove();
+      }
       mapRef.current = null;
       isMapInitialized.current = false;
     };
-  }, [latitude, longitude]); // Add dependencies
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only initialize once on mount
 
-  // Keep callbacks ref up to date
+  // Update markers when detections change
   useEffect(() => {
-    onMarkerClickRef.current = onMarkerClick;
-    onRemoveDroneRef.current = onRemoveDrone;
-  }, [onMarkerClick, onRemoveDrone]);
+    if (!mapRef.current || !mapRef.current.loaded()) return;
 
-  // Update detection markers when detections change
-  useEffect(() => {
-    if (!mapRef.current) return;
+    // Clear all existing markers
+    markersRef.current.forEach((marker) => marker.remove());
+    markersRef.current = [];
 
-    // Wait for map to be fully loaded before creating markers
-    const createMarkers = () => {
-      if (!mapRef.current || !mapRef.current.loaded()) return;
+    if (!detections || detections.length === 0) return;
 
-      // Remove all old detection markers and routes
-      markersRef.current.forEach((marker) => marker.remove());
-      markersRef.current = [];
-      
-      // Remove old route layers and sources
-      Object.keys(routesRef.current).forEach((objId) => {
-        const map = mapRef.current!;
-        if (map.getLayer(`route-${objId}`)) {
-          map.removeLayer(`route-${objId}`);
-        }
-        if (map.getSource(`route-${objId}`)) {
-          map.removeSource(`route-${objId}`);
-        }
-      });
-      routesRef.current = {};
+    // Collect all unique objects from all detections with their camera IDs
+    const objectsMap = new globalThis.Map<string, { obj: DetectionObject; camId: string; timestamp: string }>();
 
-      if (detections.length === 0) {
-        previousObjectsRef.current = new Set();
-        return;
-      }
+    // Process detections from newest to oldest to get latest position
+    const sortedDetections = [...detections].sort((a, b) => {
+      return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+    });
 
-      // Sort detections by timestamp (oldest to newest)
-      const sortedDetections = [...detections].sort((a, b) => {
-        const timeA = new Date(a.timestamp).getTime();
-        const timeB = new Date(b.timestamp).getTime();
-        return timeA - timeB;
-      });
-
-      // Get latest detection
-      const latestDetection = sortedDetections[sortedDetections.length - 1];
-      if (!latestDetection || !latestDetection.objects) {
-        previousObjectsRef.current = new Set();
-        return;
-      }
-
-      // Get current object IDs
-      const currentObjectIds = new Set(
-        latestDetection.objects.map(obj => obj.obj_id).filter(Boolean)
-      );
-
-      // Find lost objects (were in previous, not in current)
-      const lostObjects = Array.from(previousObjectsRef.current).filter(
-        id => !currentObjectIds.has(id)
-      );
-
-      // Find new objects (not in previous, in current)
-      const newObjects = Array.from(currentObjectIds).filter(
-        id => !previousObjectsRef.current.has(id)
-      );
-
-      // Group objects by obj_id to get the latest position from each camera
-      const objectsByObjId = new globalThis.Map<string, { detection: DetectionItem; obj: DetectionObject }>();
-      
-      // Process all recent detections to get latest position for each unique object
-      for (let i = sortedDetections.length - 1; i >= 0; i--) {
-        const detection = sortedDetections[i];
-        if (detection.objects) {
-          detection.objects.forEach(obj => {
-            if (obj.obj_id && !objectsByObjId.has(obj.obj_id)) {
-              objectsByObjId.set(obj.obj_id, { detection, obj });
-            }
-          });
-        }
-      }
-
-      // Create markers for current objects
-      objectsByObjId.forEach(({ detection, obj }: { detection: DetectionItem; obj: DetectionObject }) => {
-        const lat = typeof obj.lat === "string" ? parseFloat(obj.lat) : obj.lat;
-        const lng = typeof obj.lng === "string" ? parseFloat(obj.lng) : obj.lng;
-
-        if (!isNaN(lat) && !isNaN(lng) && obj.obj_id) {
-          const isNew = newObjects.includes(obj.obj_id);
-          const isLost = false; // Current objects are not lost
-          
-          // Get color based on camera ID (team) - use the detection's cam_id, not latestDetection
-          const markerColor = getMarkerColor(detection, isLost);
-          
-          // Create marker with appropriate color
-          const droneIcon = createDroneIcon(markerColor);
-          const marker = new mapboxgl.Marker({ 
-            element: droneIcon,
-            anchor: "center"
-          })
-            .setLngLat([lng, lat])
-            .addTo(mapRef.current!);
-          
-          // Add click event
-          const markerElement = marker.getElement();
-          markerElement.style.cursor = "pointer";
-          markerElement.addEventListener("click", () => {
-            if (mapRef.current) {
-              mapRef.current.flyTo({
-                center: [lng, lat],
-                zoom: 16,
-                essential: true,
-              });
-            }
-            if (onMarkerClickRef.current) {
-              onMarkerClickRef.current({ ...obj, isLost, isNew, team: detection.cam_id });
-            }
-          });
-          
-          markersRef.current.push(marker);
-
-          // Create route for non-new objects (only if not new)
-          if (!isNew) {
-            // Find all positions for this object (up to 5 most recent)
-            const objectPositions: Array<{ lat: number; lng: number }> = [];
-            
-            // Go through detections from newest to oldest
-            for (let i = sortedDetections.length - 1; i >= 0 && objectPositions.length < 6; i--) {
-              const detection = sortedDetections[i];
-              if (detection.objects) {
-                const foundObj = detection.objects.find(o => o.obj_id === obj.obj_id);
-                if (foundObj) {
-                  const objLat = typeof foundObj.lat === "string" ? parseFloat(foundObj.lat) : foundObj.lat;
-                  const objLng = typeof foundObj.lng === "string" ? parseFloat(foundObj.lng) : foundObj.lng;
-                  if (!isNaN(objLat) && !isNaN(objLng)) {
-                    objectPositions.unshift({ lat: objLat, lng: objLng }); // Add to beginning
-                  }
-                }
-              }
-            }
-
-            // Create route if we have at least 2 positions
-            if (objectPositions.length >= 2 && mapRef.current) {
-              const coordinates = objectPositions.map(pos => [pos.lng, pos.lat]);
-              
-              const routeId = `route-${obj.obj_id}`;
-              const sourceId = `route-${obj.obj_id}`;
-              
-              if (!mapRef.current.getSource(sourceId)) {
-                mapRef.current.addSource(sourceId, {
-                  type: 'geojson',
-                  data: {
-                    type: 'Feature',
-                    properties: {},
-                    geometry: {
-                      type: 'LineString',
-                      coordinates: coordinates
-                    }
-                  }
-                });
-
-                mapRef.current.addLayer({
-                  id: routeId,
-                  type: 'line',
-                  source: sourceId,
-                  layout: {
-                    'line-join': 'round',
-                    'line-cap': 'round'
-                  },
-                  paint: {
-                    'line-color': '#3b82f6',
-                    'line-width': 2,
-                    'line-opacity': 0.6
-                  }
-                });
-
-                routesRef.current[obj.obj_id] = { sourceId, layerId: routeId };
-              } else {
-                // Update existing source
-                const source = mapRef.current.getSource(sourceId) as mapboxgl.GeoJSONSource;
-                if (source) {
-                  source.setData({
-                    type: 'Feature',
-                    properties: {},
-                    geometry: {
-                      type: 'LineString',
-                      coordinates: coordinates
-                    }
-                  });
-                }
-              }
-            }
+    sortedDetections.forEach((detection) => {
+      if (detection.objects && detection.cam_id) {
+        detection.objects.forEach((obj) => {
+          if (obj.obj_id && !objectsMap.has(obj.obj_id)) {
+            objectsMap.set(obj.obj_id, {
+              obj,
+              camId: detection.cam_id,
+              timestamp: detection.timestamp
+            });
           }
+        });
+      }
+    });
+
+    // Create markers for all unique objects
+    objectsMap.forEach(({ obj, camId }) => {
+      const lat = typeof obj.lat === "string" ? parseFloat(obj.lat) : obj.lat;
+      const lng = typeof obj.lng === "string" ? parseFloat(obj.lng) : obj.lng;
+
+      if (isNaN(lat) || isNaN(lng)) return;
+
+      // Get color based on camera ID
+      const markerColor = getMarkerColor(camId);
+
+      // Create marker with team color
+      const droneIcon = createDroneIcon(markerColor);
+      const marker = new mapboxgl.Marker({
+        element: droneIcon,
+        anchor: "center"
+      })
+        .setLngLat([lng, lat])
+        .addTo(mapRef.current!);
+
+      // Add click event
+      marker.getElement().addEventListener("click", () => {
+        if (mapRef.current) {
+          mapRef.current.flyTo({
+            center: [lng, lat],
+            zoom: 16,
+            essential: true,
+          });
+        }
+        if (onMarkerClick) {
+          onMarkerClick({ ...obj, isLost: false, isNew: false, team: camId });
         }
       });
 
-      // Create markers for lost objects (from previous detection)
-      if (lostObjects.length > 0 && sortedDetections.length > 1) {
-        const previousDetection = sortedDetections[sortedDetections.length - 2];
-        if (previousDetection && previousDetection.objects) {
-          lostObjects.forEach((objId) => {
-            const lostObj = previousDetection.objects!.find(o => o.obj_id === objId);
-            if (lostObj) {
-              const lat = typeof lostObj.lat === "string" ? parseFloat(lostObj.lat) : lostObj.lat;
-              const lng = typeof lostObj.lng === "string" ? parseFloat(lostObj.lng) : lostObj.lng;
+      markersRef.current.push(marker);
+    });
 
-              if (!isNaN(lat) && !isNaN(lng)) {
-                // Create red marker for lost object
-                const droneIcon = createDroneIcon("#ef4444"); // red color
-                const marker = new mapboxgl.Marker({ 
-                  element: droneIcon,
-                  anchor: "center"
-                })
-                  .setLngLat([lng, lat])
-                  .addTo(mapRef.current!);
-                
-                const markerElement = marker.getElement();
-                markerElement.style.cursor = "pointer";
-                markerElement.addEventListener("click", () => {
-                  if (mapRef.current) {
-                    mapRef.current.flyTo({
-                      center: [lng, lat],
-                      zoom: 16,
-                      essential: true,
-                    });
-                  }
-                  if (onMarkerClickRef.current) {
-                    onMarkerClickRef.current({ ...lostObj, isLost: true, isNew: false });
-                  }
-                });
-                
-                markersRef.current.push(marker);
-              }
-            }
-          });
-        }
-      }
+    // Auto-fit bounds to show all markers
+    if (markersRef.current.length > 0) {
+      const bounds = new mapboxgl.LngLatBounds();
 
-      // Update previous objects for next comparison
-      previousObjectsRef.current = currentObjectIds;
+      markersRef.current.forEach((marker) => {
+        bounds.extend(marker.getLngLat());
+      });
 
-      // Auto-fit bounds to show all markers
-      if (markersRef.current.length > 0 && mapRef.current) {
-        const bounds = new mapboxgl.LngLatBounds();
-        
-        // Add all marker positions to bounds
-        markersRef.current.forEach(marker => {
-          const lngLat = marker.getLngLat();
-          bounds.extend(lngLat);
-        });
-
-        // Fit map to bounds with padding
-        mapRef.current.fitBounds(bounds, {
-          padding: { top: 100, bottom: 100, left: 100, right: 100 },
-          maxZoom: 15,
-          duration: 1000
-        });
-      }
-    };
-
-    // Check if map is loaded, if not wait for load event
-    if (mapRef.current.loaded()) {
-      createMarkers();
-    } else {
-      mapRef.current.once("load", createMarkers);
+      mapRef.current.fitBounds(bounds, {
+        padding: { top: 100, bottom: 100, left: 100, right: 100 },
+        maxZoom: 15,
+        duration: 1000
+      });
     }
-  }, [detections, getMarkerColor]);
+  }, [detections, getMarkerColor, onMarkerClick]);
 
   return <div ref={mapContainer} className="w-full h-full" />;
 }
