@@ -284,13 +284,39 @@ export default function Map({ latitude = 14.3026, longitude = 101.1653, detectio
     }
   }, [detections, getMarkerColor, onMarkerClick, isStyleLoaded, isManualMode]);
 
-  // Function to recenter and return to auto mode
+  // Function to refocus on latest drone positions and return to auto mode
   const handleRecenter = useCallback(() => {
-    if (!mapRef.current || markersRef.current.length === 0) return;
+    if (!mapRef.current || !detections || detections.length === 0) return;
 
+    // Get latest position for each unique drone
+    const latestPositions = new globalThis.Map<string, { lat: number; lng: number }>();
+    
+    // Sort detections by timestamp (newest first)
+    const sortedDetections = [...detections].sort((a, b) => {
+      return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+    });
+
+    // Get the latest position for each drone
+    sortedDetections.forEach((detection) => {
+      if (detection.objects) {
+        detection.objects.forEach((obj) => {
+          if (obj.obj_id && !latestPositions.has(obj.obj_id)) {
+            const lat = typeof obj.lat === "string" ? parseFloat(obj.lat) : obj.lat;
+            const lng = typeof obj.lng === "string" ? parseFloat(obj.lng) : obj.lng;
+            if (!isNaN(lat) && !isNaN(lng)) {
+              latestPositions.set(obj.obj_id, { lat, lng });
+            }
+          }
+        });
+      }
+    });
+
+    if (latestPositions.size === 0) return;
+
+    // Create bounds from latest positions
     const bounds = new mapboxgl.LngLatBounds();
-    markersRef.current.forEach((marker) => {
-      bounds.extend(marker.getLngLat());
+    latestPositions.forEach(({ lat, lng }) => {
+      bounds.extend([lng, lat]);
     });
 
     mapRef.current.fitBounds(bounds, {
@@ -303,7 +329,7 @@ export default function Map({ latitude = 14.3026, longitude = 101.1653, detectio
     if (onRecenterChange) {
       onRecenterChange(false);
     }
-  }, [onRecenterChange]);
+  }, [detections, onRecenterChange]);
 
   return (
     <div className="relative w-full h-full">
@@ -326,12 +352,12 @@ export default function Map({ latitude = 14.3026, longitude = 101.1653, detectio
         </span>
       </button>
 
-      {/* Recenter Button - Shows when in manual mode */}
+      {/* Refocus Button - Shows when in manual mode */}
       {isManualMode && (
         <button
           onClick={handleRecenter}
           className="absolute top-4 left-40 z-10 bg-purple-600/95 backdrop-blur-md rounded-lg px-4 py-2 border border-purple-500 hover:bg-purple-700 transition-all shadow-lg flex items-center gap-2 animate-slideDown"
-          title="Recenter and auto-follow drones"
+          title="Refocus on latest drone positions and auto-follow"
         >
           <Icon 
             icon="mdi:target" 
@@ -340,7 +366,7 @@ export default function Map({ latitude = 14.3026, longitude = 101.1653, detectio
             className="text-white"
           />
           <span className="text-sm text-white font-medium">
-            Recenter
+            Refocus
           </span>
         </button>
       )}
