@@ -2,7 +2,7 @@
 
 import "mapbox-gl/dist/mapbox-gl.css";
 import dynamic from "next/dynamic";
-import { useRef, useState, useEffect, useMemo } from "react";
+import { useRef, useState, useEffect, useMemo, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { io } from "socket.io-client";
 import { fetchDetectionshistory } from "@/app/api";
@@ -13,7 +13,7 @@ import Link from "next/link";
 
 const Map = dynamic(() => import("@/components/map"), { ssr: false });
 
-export default function RootPage() {
+function RootPageContent() {
   const searchParams = useSearchParams();
   const pageMode = (searchParams.get('mode') || 'live') as "live" | "history";
   
@@ -141,6 +141,7 @@ export default function RootPage() {
     });
 
     socket.on("object_detection", (data: DetectionItem) => {
+      // @ts-expect-error - image property exists in runtime data
       data.image_path = data.image.path;
       setDefenseDetections(prev => {
         const exists = prev.some(d => d.timestamp === data.timestamp && d.cam_id === data.cam_id);
@@ -861,5 +862,13 @@ export default function RootPage() {
         />
       )}
     </div>
+  );
+}
+
+export default function RootPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen bg-slate-900 text-white">Loading...</div>}>
+      <RootPageContent />
+    </Suspense>
   );
 }

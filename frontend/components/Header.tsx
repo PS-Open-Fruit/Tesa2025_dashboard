@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { Icon } from "@iconify/react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 
-export default function Header() {
+function HeaderContent() {
   const [currentTime, setCurrentTime] = useState<string>('');
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -92,5 +92,19 @@ export default function Header() {
         </div>
       </div>
     </header>
+  );
+}
+
+export default function Header() {
+  return (
+    <Suspense fallback={
+      <header className="w-full bg-gradient-to-r from-slate-800 to-slate-900 border-b border-slate-700 shadow-lg">
+        <div className="flex items-center justify-between px-6 py-3">
+          <div className="text-white">Loading...</div>
+        </div>
+      </header>
+    }>
+      <HeaderContent />
+    </Suspense>
   );
 }

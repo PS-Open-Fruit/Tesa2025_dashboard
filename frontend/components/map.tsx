@@ -156,7 +156,7 @@ export default function Map({ latitude = 14.3026, longitude = 101.1653, detectio
     if (!detections || detections.length === 0) return;
 
     // Collect all unique objects from all detections with their camera IDs
-    const objectsMap = new globalThis.Map<string, { obj: DetectionObject; camId: string; timestamp: string }>();
+    const objectsMap = new globalThis.Map<string, { obj: DetectionObject; camId: string; timestamp: string; imagePath: string }>();
 
     // Process detections from newest to oldest to get latest position
     const sortedDetections = [...detections].sort((a, b) => {
